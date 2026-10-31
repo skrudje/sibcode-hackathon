@@ -11,3 +11,6 @@ playwright-report
 **/test-results
 **/playwright-report
 **/*.tsbuildinfo
+**/target
+**/gen/schemas
+.env.e2e

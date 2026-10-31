@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Local desktop window; API and file saving are handled by narrow Rust commands",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

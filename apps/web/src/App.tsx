@@ -61,6 +61,7 @@ import {
 } from "./api";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
+import { ExportDownload } from "./components/desktop";
 
 const links = [
   { to: "/", label: "Обзор", icon: LayoutDashboard },
@@ -2371,14 +2372,7 @@ function Campaigns() {
                             <td>{when(item.created_at)}</td>
                             <td>{item.recipient_count}</td>
                             <td>
-                              <a
-                                className="text-link"
-                                href={item.download_url}
-                                download
-                              >
-                                <ArrowDownToLine size={15} />
-                                Скачать CSV
-                              </a>
+                              <ExportDownload id={item.id} url={item.download_url} />
                             </td>
                           </tr>
                         ))}

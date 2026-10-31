@@ -6,6 +6,10 @@
 
 [Результаты проверки MVP](docs/VERIFICATION.md) · [Скриншот интерфейса](docs/screenshots/overview.png)
 
+## Desktop-разработка
+
+Целевое приложение — Tauri 2 для Linux и Windows. Интерфейс упакован локально и подключается к серверу CDP. Подготовьте зависимости Tauri по [инструкции](docs/DESKTOP.md), запустите backend через Compose, затем из `apps/web` выполните `npm ci` и `npm run desktop:dev`. Для сборки установщика — `npm run desktop:build`. Подробности и границы автономности описаны в `docs/DESKTOP.md`.
+
 ## Быстрый запуск
 
 Требуются Docker Engine и Docker Compose (на Windows — Docker Desktop с Linux containers). Все команды ниже выполняются из корня репозитория.

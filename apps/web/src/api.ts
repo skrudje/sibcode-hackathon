@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { components } from "./api.generated";
+import { platformFetch } from "./transport";
 
 export type Schema<K extends keyof components["schemas"]> =
   components["schemas"][K];
@@ -28,7 +29,7 @@ export async function api<T>(
   const headers = new Headers(options.headers);
   if (typeof options.body === "string")
     headers.set("Content-Type", "application/json");
-  const response = await fetch(`/api/v1${path}`, {
+  const response = await platformFetch(`/api/v1${path}`, {
     ...options,
     headers,
     credentials: "same-origin",
@@ -107,7 +108,7 @@ export async function exampleImport(source: Source, followup = false) {
       : followup
         ? "crm_C_after.csv"
         : "crm_C_initial.csv";
-  const response = await fetch(`/api/v1/demo/files/${name}`, {
+  const response = await platformFetch(`/api/v1/demo/files/${name}`, {
     credentials: "same-origin",
   });
   if (!response.ok)
