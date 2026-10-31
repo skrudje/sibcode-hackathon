@@ -1,12 +1,10 @@
 import { useEffect, useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowUpRight, CircleAlert, LoaderCircle, Radar as RadarIcon, Send, ShieldCheck, Users } from "lucide-react";
 import { api, type Schema, eventNames, number, when } from "../api";
 import { Button } from "./ui/button";
-import { Dialog } from "./ui/dialog";
 import { HelpTip } from "./ui/help-tip";
-import { AudienceSummary } from "./audience-summary";
 import "../radar.css";
 
 type Opportunity = Schema<"RadarOpportunity">;
@@ -22,10 +20,10 @@ function ErrorNotice({ error }: { error: unknown }) {
 }
 
 export function VisitRadar() {
+  const navigate = useNavigate();
   const [options, setOptions] = useState(defaults);
   const [selected, setSelected] = useState("");
   const [offset, setOffset] = useState(0);
-  const [launching, setLaunching] = useState(false);
   const query = queryString(options);
   const report = useQuery({ queryKey: ["radar", options], queryFn: () => api<Schema<"RadarReport">>(`/radar?${query}`), refetchInterval: 10_000 });
   const items = report.data?.opportunities ?? [];
@@ -33,7 +31,7 @@ export function VisitRadar() {
   useEffect(() => {
     if (chosen && chosen.id !== selected) setSelected(chosen.id);
   }, [chosen?.id, selected]);
-  useEffect(() => { setOffset(0); setLaunching(false); }, [chosen?.id]);
+  useEffect(() => { setOffset(0); }, [chosen?.id]);
   const audience = useQuery({ queryKey: ["radar-audience", chosen?.id, options, offset], enabled: !!chosen,
     queryFn: () => api<Schema<"RadarAudience">>(`/radar/opportunities/${chosen!.id}?${query}&limit=10&offset=${offset}`), refetchInterval: 10_000 });
   const incomplete = report.data?.nodes.filter(node => node.coverage_status !== "ready") ?? [];
@@ -94,11 +92,10 @@ export function VisitRadar() {
               {!!audience.data?.shared_examples.length && <details className="radar-explanation"><summary>События, подтверждающие связь</summary><p>Примеры клиентов из {chosen.shared_count} с событиями в исходных местах и взаимодействием с целевым арендатором:</p>{audience.data.shared_examples.map(c => <div key={c.id} className="radar-shared-example"><Link to={`/customers/${c.id}`}>{c.global_customer_key} <ArrowUpRight size={11} /></Link>{c.observed_events.map(e => <small key={e.event_id}>{[...chosen.origins, chosen.destination].find(n => n.tenant_id === e.tenant_id)?.name}: {eventNames[e.event_type]} · {when(e.occurred_at)}</small>)}</div>)}</details>}
               {chosen.offers.length ? <div className="radar-offer"><span className="badge badge-green">Действующее предложение</span><strong>{chosen.offers[0].title}</strong><p>{chosen.offers[0].description}</p><small>До {when(chosen.offers[0].valid_until)}</small></div> : <div className="notice"><CircleAlert size={16} /><span>Для кампании нужно действующее предложение арендатора. <Link className="text-link" to="/recommendations">Открыть рекомендации</Link></span></div>}
             </div>
-            <div className="radar-inspector-actions"><Button className="full" disabled={!chosen.offers.length || !audience.data || !!audience.error} onClick={() => setLaunching(true)}><Send size={15} /> Создать кампанию из возможности</Button><p className="radar-disclaimer">Перед CSV-выгрузкой контакты проверяются на конфликты, повторы и ограничения частоты.</p></div>
+            <div className="radar-inspector-actions"><Button className="full" disabled={!chosen.offers.length || !audience.data || !!audience.error} onClick={() => navigate(`/campaigns/new?opportunity=${chosen.id}&${query}`)}><Send size={15} /> Создать кампанию из возможности</Button><p className="radar-disclaimer">Перед CSV-выгрузкой контакты проверяются на конфликты, повторы и ограничения частоты.</p></div>
           </> : <div className="empty"><div className="empty-icon"><Users size={22} /></div><h3>Выберите возможность</h3><p>Здесь появятся аудитория, события и действующее предложение арендатора.</p></div>}
         </aside>
       </div>
-      {launching && chosen && <LaunchCampaign key={chosen.id} opportunity={chosen} options={options} onClose={() => setLaunching(false)} />}
     </>
   );
 }
@@ -128,25 +125,4 @@ function RadarMap({ nodes, items, chosen, onChoose }: { nodes: Schema<"RadarNode
     {positions.map(node => <g key={node.tenant_id} transform={`translate(${node.x-78},${node.y-29})`} className={`radar-map-node${chosen?.destination.tenant_id===node.tenant_id ? " destination" : ""}`}><title>{node.name} · {coverageNames[node.coverage_status]}</title><rect width="156" height="58" rx="7" /><circle cx="18" cy="21" r="4" fill={node.coverage_status === "ready" ? "#369678" : "#c89b51"} /><text x="30" y="25" className="radar-node-name">{node.name.length > 18 ? node.name.slice(0,17)+"…" : node.name}</text><text x="14" y="44" className="radar-node-category">{node.category}</text></g>)}
     {!nodes.length && <text x="350" y="180" textAnchor="middle" className="radar-node-category">Источники ещё не подключены</text>}
   </svg>;
-}
-
-function LaunchCampaign({ opportunity, options, onClose }: { opportunity: Opportunity; options: Options; onClose: () => void }) {
-  const client = useQueryClient(), navigate = useNavigate();
-  const [name, setName] = useState(`Радар · ${opportunity.destination.name}`);
-  const [channel, setChannel] = useState("email");
-  const [offer, setOffer] = useState(opportunity.offers[0]?.rule_id ?? "");
-  const [key, setKey] = useState(() => crypto.randomUUID());
-  const launch = useMutation({ mutationFn: () => api<Schema<"RadarCampaignResult">>("/radar/campaigns", { method: "POST", body: JSON.stringify({ ...options, opportunity_id: opportunity.id, offer_rule_id: offer, channel, name, idempotency_key: key }) }),
-    onSuccess: async result => { await client.invalidateQueries(); onClose(); navigate(`/campaigns?campaign=${result.campaign_id}`); } });
-  return <Dialog title="Кампания из возможности" onClose={() => { if(!launch.isPending) onClose(); }}><form className="dialog-body" onSubmit={event => { event.preventDefault(); launch.mutate(); }}>
-    <div className="notice"><ShieldCheck size={16} /><span>При сохранении сервер заново проверит связь, полноту истории и предложение. Созданный сегмент будет пересчитываться при новых взаимодействиях.</span></div>
-    <label>Название кампании<input required maxLength={120} value={name} onChange={event => { setName(event.target.value); setKey(crypto.randomUUID()); }} /></label>
-    <AudienceSummary definition={opportunity.definition} tenants={[...opportunity.origins, opportunity.destination].map(item => ({ id: item.tenant_id, name: item.name }))} />
-    <label>Предложение арендатора<select value={offer} onChange={event => { setOffer(event.target.value); setKey(crypto.randomUUID()); }}>{opportunity.offers.map(item => <option key={item.rule_id} value={item.rule_id}>{item.title}</option>)}</select></label>
-    <div className="field-hint">{opportunity.offers.find(item => item.rule_id === offer)?.description}</div>
-    <label>Канал выгрузки<select value={channel} onChange={event => { setChannel(event.target.value); setKey(crypto.randomUUID()); }}><option value="email">Email</option><option value="sms">SMS</option></select></label>
-    <p>В аудитории сейчас {opportunity.candidate_count} клиентов. Число доступных контактов будет показано в предпросмотре кампании. Сообщения не отправляются.</p>
-    <ErrorNotice error={launch.error} />
-    <div className="form-actions"><Button type="button" variant="outline" disabled={launch.isPending} onClick={onClose}>Отмена</Button><Button disabled={launch.isPending || !name.trim() || !offer}>{launch.isPending ? <LoaderCircle size={15} className="spin" /> : <Send size={15} />} Создать и проверить контакты</Button></div>
-  </form></Dialog>;
 }

@@ -16,10 +16,10 @@ from app.modules.segments.service import active_rule, evaluate, recommendation_i
 REASONS = ['offer_inactive', 'missing_contact', 'contact_conflict', 'duplicate_contact', 'already_exported', 'cooldown']
 
 
-def preview(db, campaign, reserve_locks=False):
-    rule = db.get(RecommendationRule, campaign.recommendation_rule_id)
-    segment = db.get(Segment, campaign.segment_id)
-    result = evaluate(db, segment)
+def preview(db, campaign, reserve_locks=False, *, segment=None, rule=None, evaluation=None):
+    rule = rule if rule is not None else db.get(RecommendationRule, campaign.recommendation_rule_id)
+    segment = segment if segment is not None else db.get(Segment, campaign.segment_id)
+    result = evaluation if evaluation is not None else evaluate(db, segment)
     candidates = result['eligible']
     excluded = dict.fromkeys(REASONS, 0)
     recipients = []
@@ -58,7 +58,7 @@ def preview(db, campaign, reserve_locks=False):
             if state and state.last_exported_at and state.last_exported_at > Clock.now() - timedelta(days=7):
                 excluded['cooldown'] += 1
                 continue
-            item = recommendation_item(db, rule, result, customer.id)
+            item = recommendation_item(db, rule, result, customer.id, segment=segment)
             recipients.append(dict(customer_id=str(customer.id), global_customer_key=customer.global_customer_key, display_name=customer.display_name, contact=contact, destination_tenant_id=str(rule.destination_tenant_id), offer_title=rule.offer_title, reason=item['explanation']))
     return json_value(dict(campaign_id=campaign.id, channel=campaign.channel, as_of=result['as_of'], evaluated_at=Clock.now(), base_count=len(candidates), eligible_count=len(recipients), excluded_counts=excluded, sample=recipients[:20], limitations=['Выгрузка не отправляет сообщения.', 'Частота ограничена по фактам выгрузки; справочник отписок не подключён.'])), recipients
 

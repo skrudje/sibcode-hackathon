@@ -695,6 +695,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/audience-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Проверить аудиторию без сохранения */
+        post: operations["previewWizardAudience"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Предпросмотр контактов до создания кампании */
+        post: operations["previewWizardCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Сохранить кампанию из мастера */
+        post: operations["prepareWizardCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1577,6 +1628,210 @@ export interface components {
              * Format: date-time
              */
             time: string;
+        };
+        /** WizardAudience */
+        WizardAudience: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "segment" | "custom" | "radar";
+            /**
+             * Segment Id
+             * @default null
+             */
+            segment_id: string | null;
+            /** @default null */
+            definition: components["schemas"]["SegmentDefinition"] | null;
+            /**
+             * Name
+             * @default null
+             */
+            name: string | null;
+            /**
+             * Opportunity Id
+             * @default null
+             */
+            opportunity_id: string | null;
+            /** @default null */
+            options: components["schemas"]["RadarOptions"] | null;
+        };
+        /** WizardOffer */
+        WizardOffer: {
+            /**
+             * Rule Id
+             * @default null
+             */
+            rule_id: string | null;
+            /** @default null */
+            draft: components["schemas"]["WizardOfferDraft"] | null;
+        };
+        /** WizardOfferDraft */
+        WizardOfferDraft: {
+            /**
+             * Destination Tenant Id
+             * Format: uuid
+             */
+            destination_tenant_id: string;
+            /** Title */
+            title: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Valid From
+             * Format: date-time
+             */
+            valid_from: string;
+            /**
+             * Valid Until
+             * Format: date-time
+             */
+            valid_until: string;
+            /**
+             * Priority
+             * @default 80
+             */
+            priority: number;
+        };
+        /** CampaignWizardDraft */
+        CampaignWizardDraft: {
+            audience: components["schemas"]["WizardAudience"];
+            offer: components["schemas"]["WizardOffer"];
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms";
+            /**
+             * Idempotency Key
+             * Format: uuid
+             */
+            idempotency_key: string;
+        };
+        /** CampaignWizardCreate */
+        CampaignWizardCreate: {
+            audience: components["schemas"]["WizardAudience"];
+            offer: components["schemas"]["WizardOffer"];
+            /** Name */
+            name: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms";
+            /**
+             * Idempotency Key
+             * Format: uuid
+             */
+            idempotency_key: string;
+            /** Preview Token */
+            preview_token: string;
+        };
+        /** WizardRecipient */
+        WizardRecipient: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Global Customer Key */
+            global_customer_key: string | null;
+            /** Display Name */
+            display_name: string | null;
+            /** Contact */
+            contact: string;
+            /**
+             * Destination Tenant Id
+             * Format: uuid
+             */
+            destination_tenant_id: string;
+            /** Offer Title */
+            offer_title: string;
+            /** Reason */
+            reason: string;
+        };
+        /** CampaignWizardPreview */
+        CampaignWizardPreview: {
+            /** Preview Token */
+            preview_token: string;
+            /** Audience Name */
+            audience_name: string;
+            definition: components["schemas"]["SegmentDefinition"];
+            /** Destination Name */
+            destination_name: string;
+            /** Offer Title */
+            offer_title: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms";
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Base Count */
+            base_count: number;
+            /** Eligible Count */
+            eligible_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Excluded Counts */
+            excluded_counts: {
+                [key: string]: number;
+            };
+            /** Sample */
+            sample: components["schemas"]["WizardRecipient"][];
+            /** Limitations */
+            limitations: string[];
+        };
+        /** CampaignWizardResult */
+        CampaignWizardResult: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /**
+             * Recommendation Rule Id
+             * Format: uuid
+             */
+            recommendation_rule_id: string;
+            /** Created */
+            created: boolean;
+        };
+        /** WizardAudiencePreview */
+        WizardAudiencePreview: {
+            /** Name */
+            name: string;
+            definition: components["schemas"]["SegmentDefinition"];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Eligible Count */
+            eligible_count: number;
+            /** Ineligible Count */
+            ineligible_count: number;
+            /** Unknown Count */
+            unknown_count: number;
         };
     };
     responses: never;
@@ -4747,6 +5002,249 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    previewWizardAudience: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WizardAudience"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WizardAudiencePreview"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    previewWizardCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignWizardDraft"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignWizardPreview"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    prepareWizardCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CampaignWizardCreate"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignWizardResult"];
+                };
+            };
+            /** @description Успех */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignWizardResult"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
         };

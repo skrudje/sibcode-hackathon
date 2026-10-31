@@ -31,12 +31,10 @@ import {
   Sparkles,
   Upload,
   Users,
-  X,
 } from "lucide-react";
 import {
   api,
   ApiError,
-  type Campaign,
   type Customer,
   type ImportJob,
   type Rule,
@@ -54,6 +52,8 @@ import { Dialog } from "./components/ui/dialog";
 import { ConnectionUnavailable, DesktopConnection, ExportDownload } from "./components/desktop";
 import { Workspace } from "./components/workspace";
 import { VisitRadar } from "./components/radar";
+import { ConditionEditor } from "./components/condition-editor";
+import { CampaignWizard } from "./components/campaign-wizard";
 import { Integrations } from "./components/integrations";
 import { SourceWorkspace } from "./components/source-workspace";
 import { AudienceSummary, compatibleDestinations } from "./components/audience-summary";
@@ -367,6 +367,7 @@ function Layout({ user }: { user: Schema<"User"> }) {
         <Route path="/segments" element={<Segments />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/campaigns/new" element={<CampaignWizard />} />
         <Route path="/radar" element={<VisitRadar />} />
         <Route path="/integrations" element={<Integrations user={user} />} />
         <Route path="*" element={<Empty title="Страница не найдена" text="Выберите раздел в меню слева." />} />
@@ -937,96 +938,6 @@ function CustomerProfile() {
   );
 }
 
-function ConditionEditor({
-  title,
-  conditions,
-  tenants,
-  onChange,
-}: {
-  title: string;
-  conditions: Schema<"EventCondition">[];
-  tenants: Tenant[];
-  onChange: (conditions: Schema<"EventCondition">[]) => void;
-}) {
-  return (
-    <div className="condition-group">
-      <div>
-        <strong>{title}</strong>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={conditions.length >= 5}
-          onClick={() =>
-            onChange([
-              ...conditions,
-              { tenant_id: tenants[0]?.id ?? "", event_types: ["interaction"] },
-            ])
-          }
-        >
-          <Plus size={14} />
-          Условие
-        </Button>
-      </div>
-      {conditions.map((condition, i) => (
-        <div className="condition-row" key={i}>
-          <select
-            aria-label={`${title} арендатор ${i + 1}`}
-            required
-            value={condition.tenant_id}
-            onChange={(e) =>
-              onChange(
-                conditions.map((c, j) =>
-                  j === i ? { ...c, tenant_id: e.target.value } : c,
-                ),
-              )
-            }
-          >
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <div className="type-checks">
-            {(["interaction", ...condition.event_types.filter(type => type !== "interaction")] as const).map((type) => (
-              <label key={type}>
-                <input
-                  type="checkbox"
-                  checked={condition.event_types.includes(type)}
-                  onChange={(e) =>
-                    onChange(
-                      conditions.map((c, j) =>
-                        j === i
-                          ? {
-                              ...c,
-                              event_types: e.target.checked
-                                ? [...c.event_types, type]
-                                : c.event_types.filter((t) => t !== type),
-                            }
-                          : c,
-                      ),
-                    )
-                  }
-                />
-                {eventNames[type]}
-              </label>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label="Удалить условие"
-            onClick={() => onChange(conditions.filter((_, j) => j !== i))}
-          >
-            <X size={16} />
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function SegmentForm({
   initial,
@@ -1527,6 +1438,7 @@ function RuleForm({
 }
 
 function Recommendations() {
+  const navigate = useNavigate();
   const rules = useData<Schema<"RecommendationRulePage">>(
       ["rules"],
       "/recommendation-rules",
@@ -1604,6 +1516,9 @@ function Recommendations() {
             >
               Редактировать правило
             </Button>
+            <Button variant="ghost" className="full" onClick={() => navigate(`/campaigns/new?rule=${rule.id}`)}>
+              <Send size={15} /> Создать кампанию
+            </Button>
           </Panel>
         ))}
       </div>
@@ -1630,107 +1545,13 @@ function Recommendations() {
   );
 }
 
-function CampaignForm({
-  segments,
-  rules,
-  onClose,
-  onCreated,
-}: {
-  segments: Segment[];
-  rules: Rule[];
-  onClose: () => void;
-  onCreated: (campaign: Campaign) => void;
-}) {
-  const [name, setName] = useState(""),
-    [ruleId, setRuleId] = useState(rules[0]?.id ?? ""),
-    [channel, setChannel] = useState("email");
-  const chosen = rules.find((r) => r.id === ruleId);
-  const mutation = useMutation({
-    mutationFn: () =>
-      api<Campaign>("/campaigns", {
-        method: "POST",
-        body: JSON.stringify({
-          name,
-          recommendation_rule_id: ruleId,
-          segment_id: chosen?.segment_id,
-          channel,
-        }),
-      }),
-    onSuccess: onCreated,
-  });
-  return (
-    <Dialog title="Новая кампания" onClose={onClose}>
-      <form
-        className="dialog-body"
-        onSubmit={(e) => {
-          e.preventDefault();
-          mutation.mutate();
-        }}
-      >
-        <label>
-          Название
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={120}
-            placeholder="Например: знакомство с книжным"
-          />
-        </label>
-        <label>
-          Правило рекомендации
-          <select
-            value={ruleId}
-            onChange={(e) => setRuleId(e.target.value)}
-            required
-          >
-            {rules.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="field-hint">
-          Сегмент:{" "}
-          {segments.find((s) => s.id === chosen?.segment_id)?.name ??
-            "Выберите правило"}
-        </div>
-        <label>
-          Канал выгрузки
-          <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
-
-          </select>
-        </label>
-        <Message>
-          Будет создан CSV для внешней системы. Платформа не отправляет
-          сообщения.
-        </Message>
-        <ErrorMessage error={mutation.error} />
-        <div className="form-actions">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button disabled={mutation.isPending}>Создать кампанию</Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
 
 function Campaigns() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const client = useQueryClient(),
-    campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns"),
-    segments = useData<Schema<"SegmentPage">>(["segments"], "/segments"),
-    rules = useData<Schema<"RecommendationRulePage">>(
-      ["rules"],
-      "/recommendation-rules",
-    );
+    campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns");
   const [selected, setSelected] = useState(searchParams.get("campaign") ?? ""),
-    [create, setCreate] = useState(false),
     [key, setKey] = useState(() => crypto.randomUUID());
   const cid = selected || campaigns.data?.items[0]?.id,
     campaign = campaigns.data?.items.find((c) => c.id === cid);
@@ -1761,7 +1582,7 @@ function Campaigns() {
         title="Кампании"
         text="Подготовьте релевантную аудиторию и передайте её в маркетинг."
         actions={
-          <Button disabled={!rules.data?.total} onClick={() => setCreate(true)}>
+          <Button onClick={() => navigate("/campaigns/new")}>
             <Plus size={17} />
             Создать кампанию
           </Button>
@@ -1937,18 +1758,7 @@ function Campaigns() {
           )}
         </div>
       </div>
-      {create && (
-        <CampaignForm
-          segments={segments.data?.items ?? []}
-          rules={rules.data?.items ?? []}
-          onClose={() => setCreate(false)}
-          onCreated={(c) => {
-            setSelected(c.id);
-            setCreate(false);
-            void client.invalidateQueries();
-          }}
-        />
-      )}
+
     </>
   );
 }

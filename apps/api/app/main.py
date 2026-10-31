@@ -28,6 +28,9 @@ from app.modules.sources.service import update_coverage
 from app.modules.radar import service as radar_service
 from app.modules.radar.contracts import RadarAudience, RadarCampaignResult, RadarCampaignWrite, RadarDemoResult, RadarDemoWrite, RadarOptions, RadarReport
 from app.modules.radar.demo import enqueue as enqueue_radar_demo
+from app.modules.campaigns import service as campaign_wizard
+from app.modules.campaigns.contracts import (CampaignWizardCreate, CampaignWizardDraft, CampaignWizardPreview,
+    CampaignWizardResult, WizardAudience, WizardAudiencePreview)
 from app.modules.integrations import service as integrations
 from app.modules.integrations.contracts import (ConnectionTest, IntegrationInfo, IntegrationPage, IntegrationWrite,
     TeamMember, TeamPage, TenantInfo, TenantWrite, UserPatch, UserWrite)
@@ -436,6 +439,23 @@ def update_rule(rule_id: UUID, body: RecommendationRuleWrite, user: CurrentUser,
 
 def campaign_public(c):
     return dump(c, ['id', 'name', 'segment_id', 'recommendation_rule_id', 'channel', 'created_at'])
+
+
+@app.post('/api/v1/campaigns/audience-preview', response_model=WizardAudiencePreview)
+def wizard_audience_preview(body: WizardAudience, user: CurrentUser):
+    return campaign_wizard.audience_preview(user.mall_id, body)
+
+
+@app.post('/api/v1/campaigns/preview', response_model=CampaignWizardPreview)
+def wizard_campaign_preview(body: CampaignWizardDraft, user: CurrentUser):
+    return campaign_wizard.preview_campaign(user.mall_id, body)
+
+
+@app.post('/api/v1/campaigns/prepare', status_code=201, response_model=CampaignWizardResult)
+def wizard_campaign_create(body: CampaignWizardCreate, user: CurrentUser, response: Response):
+    result = campaign_wizard.create_campaign(user.mall_id, body)
+    response.status_code = 201 if result['created'] else 200
+    return result
 
 
 @app.get('/api/v1/campaigns')
