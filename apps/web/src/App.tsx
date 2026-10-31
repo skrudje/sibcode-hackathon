@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import {
   api,
+  ApiError,
   type Campaign,
   type Customer,
   type ImportJob,
@@ -57,7 +58,7 @@ import {
 } from "./api";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
-import { DesktopConnection, ExportDownload } from "./components/desktop";
+import { ConnectionUnavailable, DesktopConnection, ExportDownload } from "./components/desktop";
 import { Workspace } from "./components/workspace";
 import { VisitRadar } from "./components/radar";
 
@@ -311,9 +312,8 @@ function Login({ onLogin }: { onLogin: () => void }) {
         <div className="login-note">
           <ShieldCheck size={15} /> Демонстрационная среда · Синтетические данные
         </div>
-        <DesktopConnection />
       </main>
-      <div className="login-version">Клиентская платформа · SibКод 2026 · 0.1.0</div>
+      <div className="login-version"><span>Клиентская платформа · SibКод 2026 · 0.1.0</span><DesktopConnection /></div>
     </div>
   );
 }
@@ -334,6 +334,8 @@ export default function App() {
     return () => window.removeEventListener("session-expired", expired);
   }, [client, me.refetch]);
   if (me.isPending) return <Loading />;
+  if (!me.data && me.isError && !(me.error instanceof ApiError && me.error.status === 401))
+    return <ConnectionUnavailable checking={me.isFetching} onRetry={() => void me.refetch()} />;
   if (!me.data)
     return (
       <Login

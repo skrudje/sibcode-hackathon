@@ -1,58 +1,112 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownToLine, LoaderCircle, Monitor, Server } from "lucide-react";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDownToLine, Check, LoaderCircle, RefreshCw, Server, Settings, Unplug } from "lucide-react";
+import { api } from "../api";
 import { connectServer, desktop, getConnection, saveExport } from "../transport";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 
-export function DesktopConnection() {
+export function DesktopConnection({ className = "desktop-settings", label = "Настройки" }: {
+  className?: string;
+  label?: string;
+}) {
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [server, setServer] = useState("");
-  const [current, setCurrent] = useState("");
-  const [error, setError] = useState("");
-  useEffect(() => {
-    if (desktop)
-      void getConnection().then((info) => {
-        setServer(info.serverUrl);
-        setCurrent(info.serverUrl);
-      }).catch(() => setError("Не удалось прочитать настройки подключения"));
-  }, []);
+  const connection = useQuery({
+    queryKey: ["desktop-connection"],
+    queryFn: getConnection,
+    enabled: desktop && open,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const health = useQuery({
+    queryKey: ["connection-health"],
+    queryFn: () => api<{ status: string }>("/health/ready"),
+    enabled: desktop && open,
+    staleTime: 10_000,
+    retry: false,
+  });
   const connect = useMutation({
-    mutationFn: () => connectServer(server),
-    onSuccess: (info) => {
-      setCurrent(info.serverUrl);
+    mutationFn: () => connectServer(server.trim()),
+    onSuccess: async () => {
       // Cancel old-server queries before removing cached profiles and sessions.
-      void client.cancelQueries().then(() => {
-        client.clear();
-        window.location.hash = "/";
-        window.location.reload();
-      });
+      await client.cancelQueries();
+      client.clear();
+      window.location.hash = "/";
+      window.location.reload();
     },
   });
+  function close() {
+    if (connect.isPending) return;
+    setOpen(false);
+    setEditing(false);
+    connect.reset();
+  }
+  function edit() {
+    setServer(connection.data?.serverUrl ?? "");
+    connect.reset();
+    setEditing(true);
+  }
   if (!desktop) return null;
   return (
     <>
-      <button className="desktop-connection" aria-label="Подключение к серверу" onClick={() => setOpen(true)} title={current}>
-        <Monitor size={13} /><span>Подключение к серверу</span>
+      <button className={className} type="button" aria-label={label} onClick={() => setOpen(true)} title={label}>
+        <Settings size={17} /><span>{label}</span>
       </button>
       {open && (
-        <Dialog title="Подключение к платформе" onClose={() => !connect.isPending && setOpen(false)}>
-          <form className="dialog-body" onSubmit={(event) => { event.preventDefault(); connect.mutate(); }}>
-            <p>Укажите сервер вашей команды. При смене сервера потребуется войти заново.</p>
-            <label>Адрес сервера
-              <input type="url" required value={server} onChange={(event) => setServer(event.target.value)} placeholder="https://cdp.example.com" />
-            </label>
-            <small>Для локального Docker: http://127.0.0.1:5180. Сервер должен быть запущен.</small>
-            {(error || connect.error) && <div role="alert" className="notice notice-error">{connect.error?.message || error}</div>}
-            <div className="form-actions">
-              <Button variant="outline" type="button" onClick={() => setOpen(false)} disabled={connect.isPending}>Отмена</Button>
-              <Button disabled={connect.isPending}>{connect.isPending ? <LoaderCircle className="spin" size={16} /> : <Server size={16} />} Проверить и подключить</Button>
+        <Dialog title="Настройки приложения" onClose={close}>
+          <div className="dialog-body connection-settings">
+            <div className="settings-intro"><h3>Подключение</h3><p>Приложение автоматически использует сохранённый сервер вашей команды.</p></div>
+            <div className={`settings-server${health.isError ? " settings-server-offline" : ""}`}>
+              <span className="settings-server-icon"><Server size={21} /></span>
+              <div><strong>Рабочая платформа</strong><span>{health.isError ? "Нет связи с сервером" : health.isPending ? "Проверяем доступность…" : "Сервер доступен"}</span></div>
+              {health.isError ? <Unplug size={18} /> : health.isPending ? <LoaderCircle size={18} className="spin" /> : <Check size={18} />}
             </div>
-          </form>
+            {connection.isError && <div role="alert" className="notice notice-error">Не удалось прочитать настройки. <button type="button" className="text-link" onClick={() => void connection.refetch()}>Повторить</button></div>}
+            {!editing ? (
+              <>
+                <div className="settings-option"><div><strong>Сервер команды</strong><small>Меняйте адрес только при переходе на другую платформу.</small></div><Button type="button" variant="outline" disabled={!connection.data} onClick={edit}>Изменить сервер</Button></div>
+                <div className="form-actions"><Button type="button" onClick={close}>Готово</Button></div>
+              </>
+            ) : (
+              <form className="settings-server-form" onSubmit={(event) => {
+                event.preventDefault();
+                // Saving an unchanged address must not reset the native session.
+                if (connection.data && new URL(server.trim()).href === new URL(connection.data.serverUrl).href) {
+                  setEditing(false);
+                  connect.reset();
+                  return;
+                }
+                connect.mutate();
+              }}>
+                <label>Адрес сервера<input autoFocus type="url" required value={server} disabled={connect.isPending} onChange={(event) => { setServer(event.target.value); connect.reset(); }} placeholder="https://cdp.example.com" /></label>
+                <p>Адрес выдаёт администратор вашей команды. После смены сервера потребуется войти заново.</p>
+                <details><summary>Локальная разработка</summary><p>Если сервер запущен через Docker на этом компьютере: <code>http://127.0.0.1:5180</code>.</p></details>
+                {connect.error && <div role="alert" className="notice notice-error">{connect.error.message}</div>}
+                <div className="form-actions"><Button variant="outline" type="button" onClick={() => { setEditing(false); connect.reset(); }} disabled={connect.isPending}>Отмена</Button><Button disabled={connect.isPending}>{connect.isPending && <LoaderCircle className="spin" size={16} />}{connect.isPending ? "Подключаемся…" : "Сохранить и подключиться"}</Button></div>
+              </form>
+            )}
+          </div>
         </Dialog>
       )}
     </>
+  );
+}
+
+export function ConnectionUnavailable({ checking, onRetry }: { checking: boolean; onRetry: () => void }) {
+  return (
+    <main className="connection-unavailable">
+      <div className="connection-recovery">
+        <span className="connection-recovery-icon"><Unplug size={29} /></span>
+        <div className="eyebrow">Хрюкерсы CDP</div>
+        <h1>Не удалось подключиться</h1>
+        <p>Платформа сейчас недоступна. Проверьте подключение к сети и попробуйте ещё раз.</p>
+        <Button onClick={onRetry} disabled={checking}><RefreshCw size={16} className={checking ? "spin" : ""} />{checking ? "Подключаемся…" : "Повторить"}</Button>
+        <DesktopConnection label="Настройки подключения" />
+      </div>
+    </main>
   );
 }
 

@@ -102,6 +102,7 @@ export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <DesktopConnection className="nav-link" />
           <button className="nav-link" aria-label="Как работает платформа" onClick={onHelp} title="Как работает платформа">
             <HelpCircle size={17} /><span>Справка</span>
           </button>
@@ -141,7 +142,6 @@ export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
           <span className={`connection-state ${health.isError ? "connection-error" : health.isPending ? "connection-pending" : "connection-ok"}`} role="status">
             <i className="status-dot" />{health.isError ? "Нет связи с сервером" : health.isPending ? "Проверка подключения…" : "Сервер доступен"}
           </span>
-          <DesktopConnection />
         </div>
         <div className="statusbar-group statusbar-meta">
           {fetching > 0 && <span className="fetch-status"><LoaderCircle size={12} className="spin" /> Обновление…</span>}

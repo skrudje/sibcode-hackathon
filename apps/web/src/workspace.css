@@ -55,8 +55,33 @@ kbd { font: 10px "Cascadia Code", Consolas, monospace; color: #87969f; white-spa
 .connection-error .status-dot { background: #c34c59; }
 .connection-pending .status-dot { background: #c99b49; }
 .fetch-status { display: flex; align-items: center; gap: 4px; }
-.desktop-connection { position: static; display: inline-flex; align-items: center; gap: 5px; background: transparent; padding: 3px 0; border: 0; color: #6b7d89; font-size: inherit; }
-.desktop-connection:hover { color: #168363; }
+.desktop-settings { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: transparent; padding: 5px; border: 0; border-radius: 4px; color: #6b7d89; font-size: 11px; }
+.desktop-settings:hover { color: #168363; background: #16836308; }
+.desktop-settings svg { width: 14px; height: 14px; }
+.connection-settings { gap: 22px; }
+.settings-intro h3 { font-size: 14px; color: #354c42; margin-bottom: 7px; }
+.settings-intro p, .settings-server-form p { color: #71847b; line-height: 1.7; font-size: 12px; }
+.settings-server { display: flex; align-items: center; gap: 13px; padding: 16px; background: #f3f8f5; border: 1px solid #dce9e1; border-radius: 7px; color: #298660; }
+.settings-server-icon { display: grid; place-items: center; width: 41px; height: 41px; background: #e4f0e9; border-radius: 8px; flex-shrink: 0; }
+.settings-server > div { flex: 1; min-width: 0; }
+.settings-server strong { display: block; font-size: 13px; color: #344c3f; font-weight: 600; }
+.settings-server div > span { display: block; font-size: 11px; margin-top: 6px; }
+.settings-server-offline { color: #a06a35; background: #fcf8f2; border-color: #eee3d3; }
+.settings-server-offline .settings-server-icon { background: #f2e9dc; }
+.settings-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.settings-option strong { display: block; font-size: 12px; color: #455e50; font-weight: 500; }
+.settings-option small { display: block; font-size: 11px; margin-top: 6px; color: #7d8f83; line-height: 1.6; }
+.settings-option .btn { flex-shrink: 0; }
+.settings-server-form { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid #e6ece8; padding-top: 20px; }
+.settings-server-form details { color: #7c8d82; font-size: 11px; }
+.settings-server-form summary { cursor: pointer; }
+.settings-server-form details p { margin-top: 8px; font-size: 11px; }
+.connection-unavailable { display: grid; place-items: center; height: 100dvh; padding: 30px 20px; overflow: auto; background: #edf1f0; }
+.connection-recovery { display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 360px; }
+.connection-recovery-icon { display: grid; place-items: center; width: 68px; height: 68px; background: #e1e9e4; color: #668374; border: 1px solid #d3dfd7; border-radius: 18px; margin-bottom: 25px; }
+.connection-recovery h1 { font-size: 23px; letter-spacing: -.5px; color: #354d40; margin: 10px 0; }
+.connection-recovery > p { font-size: 13px; line-height: 1.8; color: #758c7e; margin-bottom: 26px; }
+.connection-recovery > .desktop-settings { margin-top: 14px; }
 .sidebar-collapsed { grid-template-columns: 58px minmax(0, 1fr); }
 .sidebar-collapsed .sidebar { padding: 0 7px; }
 .sidebar-collapsed .brand { padding: 0; justify-content: center; }
@@ -134,8 +159,8 @@ tbody tr:hover { background: #f6f9f7; }
 .login-form form { display: flex; flex-direction: column; gap: 16px; margin-top: 23px; }
 .login-form .btn { min-height: 35px; margin-top: 2px; }
 .login-note { display: flex; align-items: center; gap: 6px; color: #7f9688; font-size: 9px; line-height: 1.6; margin-top: 20px; }
-.login-form > .desktop-connection { margin-top: 16px; font-size: 10px; }
-.login-version { position: absolute; bottom: 22px; color: #84998b; font-size: 10px; }
+.login-version { position: absolute; bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #84998b; font-size: 10px; }
+.login-version .desktop-settings { font-size: 10px; }
 
 @media (max-width: 1200px) {
   .source-grid { grid-template-columns: 1fr; }
@@ -218,7 +243,7 @@ tbody tr:hover { background: #f6f9f7; }
   .campaign-cta { width: 100%; }
   .statusbar { padding: 0 7px; font-size: 9px; }
   .statusbar-group { gap: 8px; }
-  .statusbar-meta, .statusbar .desktop-connection > span { display: none; }
+  .statusbar-meta { display: none; }
   .dialog-body { padding: 14px; }
   .dialog-header { padding: 12px 14px; }
   .form-actions { justify-content: flex-start; }
