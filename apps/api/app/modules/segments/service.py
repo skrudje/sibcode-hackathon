@@ -81,9 +81,9 @@ def active_rule(db, rule):
     return rule.is_active and tenant.is_active and rule.valid_from <= Clock.now() < rule.valid_until
 
 
-def recommendation_item(db, rule, result, customer_id):
+def recommendation_item(db, rule, result, customer_id, segment=None):
     destination = db.get(Tenant, rule.destination_tenant_id)
-    segment = db.get(Segment, rule.segment_id)
+    segment = segment if segment is not None else db.get(Segment, rule.segment_id)
     evidence = result['evidence'][customer_id]
     names = {t.id: t.name for t in db.scalars(select(Tenant).where(Tenant.mall_id == rule.mall_id))}
     excluded_types = {kind for condition in segment.definition['exclude_any'] if str(condition['tenant_id']) == str(destination.id) for kind in condition['event_types']}

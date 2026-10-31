@@ -32,12 +32,10 @@ import {
   Sparkles,
   Upload,
   Users,
-  X,
 } from "lucide-react";
 import {
   api,
   ApiError,
-  type Campaign,
   type Customer,
   type ImportJob,
   type Rule,
@@ -55,8 +53,11 @@ import { Dialog } from "./components/ui/dialog";
 import { ConnectionUnavailable, DesktopConnection, ExportDownload } from "./components/desktop";
 import { Workspace } from "./components/workspace";
 import { VisitRadar } from "./components/radar";
+import { ConditionEditor } from "./components/condition-editor";
+import { CampaignWizard } from "./components/campaign-wizard";
 import { Integrations } from "./components/integrations";
 import { SourceWorkspace } from "./components/source-workspace";
+import { AudienceSummary, compatibleDestinations } from "./components/audience-summary";
 import { HelpTip } from "./components/ui/help-tip";
 import { NexaLogo } from "./components/brand";
 
@@ -375,6 +376,7 @@ function Layout({ user }: { user: Schema<"User"> }) {
         <Route path="/segments" element={<Segments />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/campaigns/new" element={<CampaignWizard />} />
         <Route path="/radar" element={<VisitRadar />} />
         <Route path="/integrations" element={<Integrations user={user} />} />
         <Route path="*" element={<Empty title="Страница не найдена" text="Выберите раздел в меню слева." />} />
@@ -906,96 +908,6 @@ function CustomerProfile() {
   );
 }
 
-function ConditionEditor({
-  title,
-  conditions,
-  tenants,
-  onChange,
-}: {
-  title: string;
-  conditions: Schema<"EventCondition">[];
-  tenants: Tenant[];
-  onChange: (conditions: Schema<"EventCondition">[]) => void;
-}) {
-  return (
-    <div className="condition-group">
-      <div>
-        <strong>{title}</strong>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={conditions.length >= 5}
-          onClick={() =>
-            onChange([
-              ...conditions,
-              { tenant_id: tenants[0]?.id ?? "", event_types: ["interaction"] },
-            ])
-          }
-        >
-          <Plus size={14} />
-          Условие
-        </Button>
-      </div>
-      {conditions.map((condition, i) => (
-        <div className="condition-row" key={i}>
-          <select
-            aria-label={`${title} арендатор ${i + 1}`}
-            required
-            value={condition.tenant_id}
-            onChange={(e) =>
-              onChange(
-                conditions.map((c, j) =>
-                  j === i ? { ...c, tenant_id: e.target.value } : c,
-                ),
-              )
-            }
-          >
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          <div className="type-checks">
-            {(["interaction", ...condition.event_types.filter(type => type !== "interaction")] as const).map((type) => (
-              <label key={type}>
-                <input
-                  type="checkbox"
-                  checked={condition.event_types.includes(type)}
-                  onChange={(e) =>
-                    onChange(
-                      conditions.map((c, j) =>
-                        j === i
-                          ? {
-                              ...c,
-                              event_types: e.target.checked
-                                ? [...c.event_types, type]
-                                : c.event_types.filter((t) => t !== type),
-                            }
-                          : c,
-                      ),
-                    )
-                  }
-                />
-                {eventNames[type]}
-              </label>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label="Удалить условие"
-            onClick={() => onChange(conditions.filter((_, j) => j !== i))}
-          >
-            <X size={16} />
-          </Button>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function SegmentForm({
   initial,
@@ -1288,10 +1200,7 @@ function RuleForm({
     [values, setValues] = useState({
       name: initial?.name ?? "",
       segment_id: initial?.segment_id ?? segments[0]?.id ?? "",
-      destination_tenant_id:
-        initial?.destination_tenant_id ??
-        tenants.find((t) => t.code === "C")?.id ??
-        "",
+      destination_tenant_id: initial?.destination_tenant_id ?? "",
       priority: initial?.priority ?? 80,
       offer_title: initial?.offer_title ?? "",
       offer_description: initial?.offer_description ?? "",
@@ -1304,12 +1213,28 @@ function RuleForm({
       ),
       is_active: initial?.is_active ?? true,
     });
+  const [offerReviewRequired, setOfferReviewRequired] = useState(false);
+  const [offerReviewed, setOfferReviewed] = useState(false);
+  const segment = segments.find(item => item.id === values.segment_id);
+  const destinations = compatibleDestinations(segment?.definition, tenants);
+  const destination = destinations.find(item => item.id === values.destination_tenant_id)
+    ?? (destinations.length === 1 ? destinations[0] : undefined);
+  const reviewRequired = offerReviewRequired || Boolean(initial && destination && destination.id !== initial.destination_tenant_id);
+
+  function changeSelection(segmentId: string, destinationId: string) {
+    if (destinationId !== (destination?.id ?? "")) {
+      setOfferReviewRequired(Boolean(values.name.trim() || values.offer_title.trim() || values.offer_description.trim()));
+      setOfferReviewed(false);
+    }
+    setValues({ ...values, segment_id: segmentId, destination_tenant_id: destinationId });
+  }
   const mutation = useMutation({
     mutationFn: () =>
       api(`/recommendation-rules${initial ? `/${initial.id}` : ""}`, {
         method: initial ? "PUT" : "POST",
         body: JSON.stringify({
           ...values,
+          destination_tenant_id: destination?.id,
           valid_from: new Date(values.valid_from).toISOString(),
           valid_until: new Date(values.valid_until).toISOString(),
         }),
@@ -1330,7 +1255,7 @@ function RuleForm({
         className="dialog-body"
         onSubmit={(e) => {
           e.preventDefault();
-          mutation.mutate();
+          if (segment && destination && (!reviewRequired || offerReviewed)) mutation.mutate();
         }}
       >
         <label>
@@ -1342,39 +1267,53 @@ function RuleForm({
             maxLength={120}
           />
         </label>
-        <div className="form-grid">
-          <label>
-            Сегмент
-            <select
-              value={values.segment_id}
-              onChange={(e) =>
-                setValues({ ...values, segment_id: e.target.value })
-              }
-              required
-            >
-              {segments.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Куда приглашаем
-            <select
-              value={values.destination_tenant_id}
-              onChange={(e) =>
-                setValues({ ...values, destination_tenant_id: e.target.value })
-              }
-              required
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label>
+          Кого приглашаем
+          <select
+            value={values.segment_id}
+            onChange={(e) => {
+              const next = segments.find(item => item.id === e.target.value);
+              const available = compatibleDestinations(next?.definition, tenants);
+              const nextDestination = available.find(item => item.id === destination?.id)
+                ?? (available.length === 1 ? available[0] : undefined);
+              changeSelection(e.target.value, nextDestination?.id ?? "");
+            }}
+            required
+          >
+            {segments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        {segment && <AudienceSummary title="Условия выбранной аудитории" definition={segment.definition} tenants={tenants} />}
+        {destinations.length === 1 ? (
+          <div className="rule-destination" role="group" aria-label="Куда приглашаем">
+            <span>Куда приглашаем</span>
+            <strong>{destination?.name}</strong>
+            <small>Назначение определено условиями выбранной аудитории.</small>
+          </div>
+        ) : destinations.length > 1 ? (
+          <>
+            <label>
+              Куда приглашаем
+              <select
+                value={destination?.id ?? ""}
+                onChange={event => changeSelection(values.segment_id, event.target.value)}
+                aria-describedby="rule-destination-hint"
+                required
+              >
+                <option value="">Выберите арендатора</option>
+                {destinations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <div className="field-hint" id="rule-destination-hint">Аудитория подходит для нескольких арендаторов. Выберите, чьё предложение использовать.</div>
+          </>
+        ) : (
+          <div className="field-hint" role="status" aria-label="Совместимость назначения">
+            Нет совместимого назначения. Добавьте в разделе «Сегменты» исключение взаимодействия или покупки у арендатора, к которому хотите пригласить клиентов.
+          </div>
+        )}
+        <div className="rule-offer-heading">
+          <strong>{destination ? `Предложение арендатора: ${destination.name}` : "Предложение арендатора"}</strong>
+          <span className="field-hint">Название правила служит для поиска в кабинете. Заголовок и описание относятся к предложению выбранного арендатора.</span>
         </div>
         <label>
           Заголовок предложения
@@ -1398,6 +1337,16 @@ function RuleForm({
             rows={3}
           />
         </label>
+        {reviewRequired && destination && (
+          <div className="rule-offer-review" role="group" aria-label="Проверка предложения" aria-live="polite">
+            <strong>Назначение изменилось: {destination.name}</strong>
+            <p>Название правила и текст предложения сохранены. Проверьте и при необходимости измените их для этого арендатора перед сохранением.</p>
+            <label className="check-label">
+              <input type="checkbox" checked={offerReviewed} onChange={event => setOfferReviewed(event.target.checked)} />
+              Название и текст предложения проверены для {destination.name}
+            </label>
+          </div>
+        )}
         <div className="form-grid">
           <label>
             Действует с
@@ -1447,17 +1396,12 @@ function RuleForm({
             Правило активно
           </label>
         </div>
-        <Message>
-          Взаимодействие с арендатором назначения должно быть исключено в выбранном
-          сегменте. Приоритет задаётся маркетологом и не является вероятностью
-          покупки.
-        </Message>
         <ErrorMessage error={mutation.error} />
         <div className="form-actions">
           <Button type="button" variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button disabled={mutation.isPending}>Сохранить правило</Button>
+          <Button disabled={mutation.isPending || !segment || !destination || (reviewRequired && !offerReviewed)}>Сохранить правило</Button>
         </div>
       </form>
     </Dialog>
@@ -1465,6 +1409,7 @@ function RuleForm({
 }
 
 function Recommendations() {
+  const navigate = useNavigate();
   const rules = useData<Schema<"RecommendationRulePage">>(
       ["rules"],
       "/recommendation-rules",
@@ -1542,6 +1487,9 @@ function Recommendations() {
             >
               Редактировать правило
             </Button>
+            <Button variant="ghost" className="full" onClick={() => navigate(`/campaigns/new?rule=${rule.id}`)}>
+              <Send size={15} /> Создать кампанию
+            </Button>
           </Panel>
         ))}
       </div>
@@ -1568,107 +1516,13 @@ function Recommendations() {
   );
 }
 
-function CampaignForm({
-  segments,
-  rules,
-  onClose,
-  onCreated,
-}: {
-  segments: Segment[];
-  rules: Rule[];
-  onClose: () => void;
-  onCreated: (campaign: Campaign) => void;
-}) {
-  const [name, setName] = useState(""),
-    [ruleId, setRuleId] = useState(rules[0]?.id ?? ""),
-    [channel, setChannel] = useState("email");
-  const chosen = rules.find((r) => r.id === ruleId);
-  const mutation = useMutation({
-    mutationFn: () =>
-      api<Campaign>("/campaigns", {
-        method: "POST",
-        body: JSON.stringify({
-          name,
-          recommendation_rule_id: ruleId,
-          segment_id: chosen?.segment_id,
-          channel,
-        }),
-      }),
-    onSuccess: onCreated,
-  });
-  return (
-    <Dialog title="Новая кампания" onClose={onClose}>
-      <form
-        className="dialog-body"
-        onSubmit={(e) => {
-          e.preventDefault();
-          mutation.mutate();
-        }}
-      >
-        <label>
-          Название
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={120}
-            placeholder="Например: знакомство с книжным"
-          />
-        </label>
-        <label>
-          Правило рекомендации
-          <select
-            value={ruleId}
-            onChange={(e) => setRuleId(e.target.value)}
-            required
-          >
-            {rules.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="field-hint">
-          Сегмент:{" "}
-          {segments.find((s) => s.id === chosen?.segment_id)?.name ??
-            "Выберите правило"}
-        </div>
-        <label>
-          Канал выгрузки
-          <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
-
-          </select>
-        </label>
-        <Message>
-          Будет создан CSV для внешней системы. Платформа не отправляет
-          сообщения.
-        </Message>
-        <ErrorMessage error={mutation.error} />
-        <div className="form-actions">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button disabled={mutation.isPending}>Создать кампанию</Button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
 
 function Campaigns() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const client = useQueryClient(),
-    campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns"),
-    segments = useData<Schema<"SegmentPage">>(["segments"], "/segments"),
-    rules = useData<Schema<"RecommendationRulePage">>(
-      ["rules"],
-      "/recommendation-rules",
-    );
+    campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns");
   const [selected, setSelected] = useState(searchParams.get("campaign") ?? ""),
-    [create, setCreate] = useState(false),
     [key, setKey] = useState(() => crypto.randomUUID());
   const cid = selected || campaigns.data?.items[0]?.id,
     campaign = campaigns.data?.items.find((c) => c.id === cid);
@@ -1699,7 +1553,7 @@ function Campaigns() {
         title="Кампании"
         text="Подготовьте релевантную аудиторию и передайте её в маркетинг."
         actions={
-          <Button disabled={!rules.data?.total} onClick={() => setCreate(true)}>
+          <Button onClick={() => navigate("/campaigns/new")}>
             <Plus size={17} />
             Создать кампанию
           </Button>
@@ -1855,18 +1709,7 @@ function Campaigns() {
           )}
         </div>
       </div>
-      {create && (
-        <CampaignForm
-          segments={segments.data?.items ?? []}
-          rules={rules.data?.items ?? []}
-          onClose={() => setCreate(false)}
-          onCreated={(c) => {
-            setSelected(c.id);
-            setCreate(false);
-            void client.invalidateQueries();
-          }}
-        />
-      )}
+
     </>
   );
 }

@@ -48,6 +48,22 @@ def test_brand_role_cannot_access_staff_or_other_tenant_data(brand, admin_client
     assert browser.get('/api/v1/brand/context').status_code == 401
 
 
+@pytest.mark.parametrize('action', ['audience-preview', 'preview', 'prepare'])
+def test_brand_role_cannot_use_campaign_wizard(brand, action):
+    browser, _, _ = brand
+    audience = {'kind': 'segment', 'segment_id': str(uuid4())}
+    body = audience if action == 'audience-preview' else {
+        'audience': audience, 'offer': {'rule_id': str(uuid4())},
+        'name': 'Недоступная кампания', 'channel': 'email',
+        'idempotency_key': str(uuid4()),
+    }
+    if action == 'prepare':
+        body['preview_token'] = '0' * 64
+    response = browser.post('/api/v1/campaigns/' + action, json=body)
+    assert response.status_code == 403, response.text
+    assert response.json()['error']['code'] == 'staff_required'
+
+
 def test_preview_maps_selected_columns_without_persisting_raw_data(brand):
     browser, _, _ = brand
     timestamp = (Clock.now() - timedelta(days=1)).isoformat()

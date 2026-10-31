@@ -134,3 +134,12 @@ export async function waitImport(id: string) {
     "Обработка продолжается дольше ожидаемого. Проверьте состояние задания.",
   );
 }
+
+export async function allItems<T>(path: string, signal?: AbortSignal): Promise<T[]> {
+  const items: T[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const page = await api<{ items: T[]; total: number }>(`${path}?limit=100&offset=${offset}`, { signal });
+    items.push(...page.items);
+    if (!page.items.length || items.length >= page.total) return items;
+  }
+}

@@ -4118,6 +4118,292 @@
         }
       }
     },
+    "/api/v1/campaigns/audience-preview": {
+      "post": {
+        "operationId": "previewWizardAudience",
+        "summary": "Проверить аудиторию без сохранения",
+        "tags": [
+          "campaigns"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WizardAudiencePreview"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WizardAudience"
+              }
+            }
+          }
+        },
+        "description": "Только роли marketer/admin. Представителю бренда доступ запрещён."
+      }
+    },
+    "/api/v1/campaigns/preview": {
+      "post": {
+        "operationId": "previewWizardCampaign",
+        "summary": "Предпросмотр контактов до создания кампании",
+        "tags": [
+          "campaigns"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignWizardPreview"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignWizardDraft"
+              }
+            }
+          }
+        },
+        "description": "Только роли marketer/admin. Представителю бренда доступ запрещён."
+      }
+    },
+    "/api/v1/campaigns/prepare": {
+      "post": {
+        "operationId": "prepareWizardCampaign",
+        "summary": "Сохранить кампанию из мастера",
+        "tags": [
+          "campaigns"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignWizardResult"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignWizardResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignWizardCreate"
+              }
+            }
+          }
+        },
+        "description": "Только роли marketer/admin. Представителю бренда доступ запрещён."
+      }
+    },
     "/api/v1/brand/context": {
       "get": {
         "summary": "Brand Context",
@@ -7634,6 +7920,472 @@
           "time"
         ],
         "title": "ContactRecord",
+        "type": "object"
+      },
+      "WizardAudience": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "segment",
+              "custom",
+              "radar"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "segment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Segment Id"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SegmentDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "opportunity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Opportunity Id"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RadarOptions"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "WizardAudience",
+        "type": "object"
+      },
+      "WizardOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Rule Id"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WizardOfferDraft"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "title": "WizardOffer",
+        "type": "object"
+      },
+      "WizardOfferDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "destination_tenant_id": {
+            "format": "uuid",
+            "title": "Destination Tenant Id",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Description",
+            "type": "string"
+          },
+          "valid_from": {
+            "format": "date-time",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          },
+          "priority": {
+            "default": 80,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Priority",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "destination_tenant_id",
+          "title",
+          "valid_from",
+          "valid_until"
+        ],
+        "title": "WizardOfferDraft",
+        "type": "object"
+      },
+      "CampaignWizardDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/WizardAudience"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/WizardOffer"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "format": "uuid",
+            "title": "Idempotency Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audience",
+          "offer",
+          "name",
+          "channel",
+          "idempotency_key"
+        ],
+        "title": "CampaignWizardDraft",
+        "type": "object"
+      },
+      "CampaignWizardCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "audience": {
+            "$ref": "#/components/schemas/WizardAudience"
+          },
+          "offer": {
+            "$ref": "#/components/schemas/WizardOffer"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "format": "uuid",
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "preview_token": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Preview Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "audience",
+          "offer",
+          "name",
+          "channel",
+          "idempotency_key",
+          "preview_token"
+        ],
+        "title": "CampaignWizardCreate",
+        "type": "object"
+      },
+      "WizardRecipient": {
+        "additionalProperties": false,
+        "properties": {
+          "customer_id": {
+            "format": "uuid",
+            "title": "Customer Id",
+            "type": "string"
+          },
+          "global_customer_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Global Customer Key"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "contact": {
+            "title": "Contact",
+            "type": "string"
+          },
+          "destination_tenant_id": {
+            "format": "uuid",
+            "title": "Destination Tenant Id",
+            "type": "string"
+          },
+          "offer_title": {
+            "title": "Offer Title",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "global_customer_key",
+          "display_name",
+          "contact",
+          "destination_tenant_id",
+          "offer_title",
+          "reason"
+        ],
+        "title": "WizardRecipient",
+        "type": "object"
+      },
+      "CampaignWizardPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "preview_token": {
+            "title": "Preview Token",
+            "type": "string"
+          },
+          "audience_name": {
+            "title": "Audience Name",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/SegmentDefinition"
+          },
+          "destination_name": {
+            "title": "Destination Name",
+            "type": "string"
+          },
+          "offer_title": {
+            "title": "Offer Title",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "base_count": {
+            "title": "Base Count",
+            "type": "integer"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "unknown_count": {
+            "title": "Unknown Count",
+            "type": "integer"
+          },
+          "excluded_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Excluded Counts",
+            "type": "object"
+          },
+          "sample": {
+            "items": {
+              "$ref": "#/components/schemas/WizardRecipient"
+            },
+            "title": "Sample",
+            "type": "array"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "preview_token",
+          "audience_name",
+          "definition",
+          "destination_name",
+          "offer_title",
+          "channel",
+          "as_of",
+          "evaluated_at",
+          "base_count",
+          "eligible_count",
+          "unknown_count",
+          "excluded_counts",
+          "sample",
+          "limitations"
+        ],
+        "title": "CampaignWizardPreview",
+        "type": "object"
+      },
+      "CampaignWizardResult": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "segment_id": {
+            "format": "uuid",
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "recommendation_rule_id": {
+            "format": "uuid",
+            "title": "Recommendation Rule Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "segment_id",
+          "recommendation_rule_id",
+          "created"
+        ],
+        "title": "CampaignWizardResult",
+        "type": "object"
+      },
+      "WizardAudiencePreview": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/SegmentDefinition"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "eligible_count": {
+            "title": "Eligible Count",
+            "type": "integer"
+          },
+          "ineligible_count": {
+            "title": "Ineligible Count",
+            "type": "integer"
+          },
+          "unknown_count": {
+            "title": "Unknown Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "definition",
+          "as_of",
+          "eligible_count",
+          "ineligible_count",
+          "unknown_count"
+        ],
+        "title": "WizardAudiencePreview",
         "type": "object"
       },
       "Body_brand_preview_api_v1_brand_imports_preview_post": {
