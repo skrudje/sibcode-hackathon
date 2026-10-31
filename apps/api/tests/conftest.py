@@ -62,7 +62,7 @@ def dataset(client, monkeypatch):
     from app.modules.ingestion import service
     from app.models import Source
     import json
-    manifest = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    manifest = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     monkeypatch.setattr(service, 'fetch_api', lambda source_id: (settings.path('demo_dir') / 'api_A.json').read_bytes())
     ids = manifest['ids']
     for code in ['a', 'b', 'c']:

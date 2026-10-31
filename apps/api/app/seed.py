@@ -14,7 +14,7 @@ from app.modules.radar.demo import generate_files as generate_radar_files
 
 
 def generate_files(reference):
-    template = ROOT / 'demo/templates'
+    template = ROOT / 'apps/api/fixtures'
     manifest = json.loads((template / 'demo_scenario.json').read_text())
     old = datetime.fromisoformat(manifest['reference_time'].replace('Z', '+00:00'))
     delta = reference - old
@@ -49,7 +49,7 @@ def generate_files(reference):
 
 
 def seed():
-    template = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    template = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     ids = {k: UUID(v) for k, v in template['ids'].items()}
     with SessionLocal.begin() as db:
         lock(db, 'demo-seed')

@@ -45,7 +45,7 @@ def generate_files(reference):
 
 
 def enqueue(db, mall_id, stage):
-    ids = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())['ids']
+    ids = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())['ids']
     if str(mall_id) != ids['mall']:
         raise AppError('not_found', 'Пример доступен только в демонстрационном ТЦ', 404)
     files = [('source_a', 'radar_A.json'), ('source_b', 'radar_B.xlsx'), ('source_c', 'radar_C.csv')] if stage == 'initial' else [('source_c', 'radar_C_after.csv')]

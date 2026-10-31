@@ -6,6 +6,23 @@ permissions:
   contents: read
 
 jobs:
+  repository:
+    name: Repository hygiene and secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python infra/check_repository.py
+      - name: Scan Git history for secrets
+        run: |
+          docker run --rm --network none -v "$PWD:/repo:ro" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git /repo --log-opts=--all --redact=100 --no-banner
   frontend:
     runs-on: ubuntu-latest
     defaults:
