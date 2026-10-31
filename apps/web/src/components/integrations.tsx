@@ -81,8 +81,43 @@ function TenantForm({ onClose }: { onClose: () => void }) {
 function TeamDialog({ user, onClose }: { user: User; onClose: () => void }) {
   const client = useQueryClient();
   const members = useQuery({ queryKey: ["team"], queryFn: () => api<Schema<"TeamPage">>("/team") });
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [role, setRole] = useState("marketer");
-  const add = useMutation({ mutationFn: () => api("/team", { method: "POST", body: JSON.stringify({ email, password, role }) }), onSuccess: () => { setEmail(""); setPassword(""); void client.invalidateQueries({ queryKey: ["team"] }); } });
-  const update = useMutation({ mutationFn: (member: Schema<"TeamMember">) => api(`/team/${member.id}`, { method: "PATCH", body: JSON.stringify({ role: member.role, is_active: member.is_active }) }), onSuccess: () => void client.invalidateQueries({ queryKey: ["team"] }) });
-  return <Dialog title="Сотрудники и доступ" onClose={onClose}><div className="dialog-body"><p>Маркетолог работает с клиентами, аудиториями и кампаниями. Администратор также управляет арендаторами, подключениями и доступами.</p><Failure error={members.error ?? add.error ?? update.error} /><div className="team-list">{members.data?.items.map(member => <div className="team-member" key={member.id}><strong>{member.email}</strong><select aria-label={`Роль ${member.email}`} disabled={member.id === user.id || update.isPending} value={member.role} onChange={event => update.mutate({ ...member, role: event.target.value as "admin" | "marketer" })}><option value="marketer">Маркетолог</option><option value="admin">Администратор</option></select><Button size="sm" variant="outline" disabled={member.id === user.id || update.isPending} onClick={() => update.mutate({ ...member, is_active: !member.is_active })}>{member.is_active ? "Отключить" : "Включить"}</Button></div>)}</div><form className="team-create" onSubmit={event => { event.preventDefault(); add.mutate(); }}><h3>Добавить сотрудника</h3><label>Email<input type="email" required autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></label><label>Первый пароль · от 12 символов<input type="password" minLength={12} required autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} /></label><label>Роль<select value={role} onChange={event => setRole(event.target.value)}><option value="marketer">Маркетолог</option><option value="admin">Администратор</option></select></label><Button disabled={add.isPending}>Создать доступ</Button></form></div></Dialog>;
+  const connections = useConnections();
+  const tenants = connections.data?.items.filter(item => item.kind === "contacts") ?? [];
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<Schema<"TeamMember">["role"]>("marketer");
+  const [tenantId, setTenantId] = useState("");
+  const add = useMutation({ mutationFn: () => api("/team", { method: "POST", body: JSON.stringify({ email, password, role, tenant_id: role === "brand" ? tenantId : null }) }),
+    onSuccess: () => { setEmail(""); setPassword(""); void client.invalidateQueries({ queryKey: ["team"] }); } });
+  const update = useMutation({ mutationFn: (member: Schema<"TeamMember">) => api(`/team/${member.id}`, { method: "PATCH", body: JSON.stringify({ role: member.role, is_active: member.is_active, tenant_id: member.role === "brand" ? member.tenant_id : null }) }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["team"] }) });
+  return <Dialog title="Сотрудники и доступ" onClose={onClose}><div className="dialog-body">
+    <p>Маркетолог работает с клиентами и кампаниями. Администратор также управляет подключениями и доступами. Представитель бренда передаёт таблицы только своего магазина через отдельный кабинет.</p>
+    <Failure error={members.error ?? connections.error ?? add.error ?? update.error} />
+    <div className="team-list">{members.data?.items.map(member => <TeamMemberEditor key={`${member.id}:${member.role}:${member.tenant_id}:${member.is_active}`} member={member}
+      own={member.id === user.id} tenants={tenants} busy={update.isPending} onSave={value => update.mutate(value)} />)}</div>
+    <form className="team-create" onSubmit={event => { event.preventDefault(); add.mutate(); }}><h3>Добавить сотрудника</h3>
+      <label>Email<input type="email" required autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></label>
+      <label>Первый пароль · от 12 символов<input type="password" minLength={12} required autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
+      <label>Роль<select aria-label="Роль" value={role} onChange={event => setRole(event.target.value as Schema<"TeamMember">["role"])}><option value="marketer">Маркетолог</option><option value="admin">Администратор</option><option value="brand">Представитель бренда</option></select></label>
+      {role === "brand" && <label>Магазин представителя<select required value={tenantId} onChange={event => setTenantId(event.target.value)}><option value="">Выберите магазин</option>{tenants.map(tenant => <option key={tenant.tenant_id} value={tenant.tenant_id}>{tenant.tenant_name}</option>)}</select><small>Доступ ограничивается этим магазином. Подходят источники с единым форматом контактов.</small></label>}
+      <Button disabled={add.isPending || role === "brand" && !tenantId}>Создать доступ</Button>
+    </form></div></Dialog>;
+}
+
+function TeamMemberEditor({ member, own, tenants, busy, onSave }: {
+  member: Schema<"TeamMember">; own: boolean; tenants: Connection[]; busy: boolean; onSave: (member: Schema<"TeamMember">) => void;
+}) {
+  const [role, setRole] = useState(member.role);
+  const [tenantId, setTenantId] = useState(member.tenant_id ?? "");
+  const [active, setActive] = useState(member.is_active);
+  const nextTenant = role === "brand" ? tenantId : null;
+  const changed = role !== member.role || active !== member.is_active || nextTenant !== member.tenant_id;
+  return <form className="team-member" onSubmit={event => { event.preventDefault(); onSave({ ...member, role, is_active: active, tenant_id: nextTenant }); }}>
+    <strong>{member.email}</strong>
+    <select aria-label={`Роль ${member.email}`} disabled={own || busy} value={role} onChange={event => setRole(event.target.value as Schema<"TeamMember">["role"])}><option value="marketer">Маркетолог</option><option value="admin">Администратор</option><option value="brand">Представитель бренда</option></select>
+    {role === "brand" && <select className="team-tenant" required aria-label={`Магазин ${member.email}`} disabled={own || busy} value={tenantId} onChange={event => setTenantId(event.target.value)}><option value="">Выберите магазин</option>{tenants.map(tenant => <option key={tenant.tenant_id} value={tenant.tenant_id}>{tenant.tenant_name}</option>)}</select>}
+    <label className="team-active"><input type="checkbox" disabled={own || busy} checked={active} onChange={event => setActive(event.target.checked)} />Доступ</label>
+    <Button size="sm" variant="outline" disabled={own || busy || !changed || role === "brand" && !tenantId}>Сохранить</Button>
+  </form>;
 }

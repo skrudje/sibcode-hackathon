@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { BrandPortal } from "./components/brand-portal";
 import {
   Link,
   Route,
@@ -355,6 +356,7 @@ function Layout({ user }: { user: Schema<"User"> }) {
       navigate("/", { replace: true });
     },
   });
+  if (user.role === "brand") return <BrandPortal user={user} onLogout={() => logout.mutate()} loggingOut={logout.isPending} logoutError={logout.error} />;
   return (
     <Workspace email={user.email} role={user.role} onHelp={() => setHelp(true)} onLogout={() => logout.mutate()} loggingOut={logout.isPending}>
       <ErrorMessage error={logout.error} />
@@ -711,8 +713,8 @@ function Customers() {
         )}
       </Panel>
       <Message>
-        Общий клиентский ключ связывает данные источников. Одинаковые имена и
-        email сами по себе не доказывают, что это один человек.
+        Записи источников объединяются по нормализованному телефону или email
+        внутри ТЦ. Совпадение контакта — правило сопоставления, а не проверка личности.
       </Message>
     </>
   );

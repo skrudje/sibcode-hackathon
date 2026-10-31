@@ -23,7 +23,9 @@ class Mall(Identified, Base):
 
 class User(Identified, Base):
     __tablename__ = 'users'
+    __table_args__ = (CheckConstraint("(role = 'brand' AND tenant_id IS NOT NULL) OR (role IN ('admin', 'marketer') AND tenant_id IS NULL)", name='ck_user_role_tenant'),)
     mall_id: Mapped[UUID] = mapped_column(ForeignKey('malls.id'))
+    tenant_id: Mapped[UUID | None] = mapped_column(ForeignKey('tenants.id', name='fk_users_tenant_id'))
     email: Mapped[str] = mapped_column(String(320), unique=True)
     password_hash: Mapped[str] = mapped_column(Text)
     role: Mapped[str] = mapped_column(String(20), default='marketer')

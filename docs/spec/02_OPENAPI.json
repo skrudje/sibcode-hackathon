@@ -1010,7 +1010,7 @@
             }
           }
         },
-        "description": "Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB. Проверка заголовков выполняется worker: ошибки структуры сохраняются в failure_code=invalid_file_schema и failure_message задания с перечислением отсутствующих и повторяющихся колонок.",
+        "description": "Для admin/marketer. contacts принимает CSV и XLSX с phone/email/time; исторические crm_csv/pos_xlsx принимают свой формат. Максимум 10 MiB.",
         "parameters": [
           {
             "name": "source_id",
@@ -4117,6 +4117,534 @@
           }
         }
       }
+    },
+    "/api/v1/brand/context": {
+      "get": {
+        "summary": "Brand Context",
+        "operationId": "getBrandContext",
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandContext"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "brand"
+        ],
+        "description": "Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ."
+      }
+    },
+    "/api/v1/brand/imports/preview": {
+      "post": {
+        "summary": "Brand Preview",
+        "operationId": "previewBrandImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_brand_preview_api_v1_brand_imports_preview_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilePreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Файл превышает лимит",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Поддерживаются CSV и XLSX",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "brand"
+        ],
+        "description": "Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ. Файл читается в памяти. Без mapping возвращаются колонки; с mapping (JSON-строка ColumnMapping) выполняется проверка выбранных полей без сохранения событий."
+      }
+    },
+    "/api/v1/brand/imports": {
+      "post": {
+        "summary": "Brand Upload",
+        "operationId": "createBrandImport",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_brand_upload_api_v1_brand_imports_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Файл превышает лимит",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Поддерживаются CSV и XLSX",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "brand"
+        ],
+        "description": "Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ. Сохраняется только CSV phone/email/time. Обработка идёт обычным worker; API cursor и полнота истории не меняются."
+      },
+      "get": {
+        "summary": "Brand Imports",
+        "operationId": "listBrandImports",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "brand"
+        ],
+        "description": "Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ."
+      }
+    },
+    "/api/v1/brand/imports/{job_id}/errors": {
+      "get": {
+        "summary": "Brand Errors",
+        "operationId": "getBrandImportErrors",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportErrorPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "brand"
+        ],
+        "description": "Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ."
+      }
     }
   },
   "components": {
@@ -4230,19 +4758,32 @@
             "type": "string",
             "enum": [
               "marketer",
-              "admin"
+              "admin",
+              "brand"
             ]
           },
           "mall_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "email",
           "role",
-          "mall_id"
+          "mall_id",
+          "tenant_id"
         ],
         "additionalProperties": false
       },
@@ -6804,38 +7345,52 @@
         "title": "IntegrationWrite"
       },
       "TeamMember": {
+        "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string",
             "format": "uuid",
-            "title": "Id"
+            "title": "Id",
+            "type": "string"
           },
           "email": {
-            "type": "string",
-            "title": "Email"
+            "title": "Email",
+            "type": "string"
           },
           "role": {
-            "type": "string",
             "enum": [
               "admin",
-              "marketer"
+              "marketer",
+              "brand"
             ],
-            "title": "Role"
+            "title": "Role",
+            "type": "string"
           },
           "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "id",
           "email",
           "role",
-          "is_active"
+          "is_active",
+          "tenant_id"
         ],
-        "title": "TeamMember"
+        "title": "TeamMember",
+        "type": "object"
       },
       "TeamPage": {
         "properties": {
@@ -6918,59 +7473,87 @@
         "title": "TenantWrite"
       },
       "UserPatch": {
+        "additionalProperties": false,
         "properties": {
           "role": {
-            "type": "string",
             "enum": [
               "marketer",
-              "admin"
+              "admin",
+              "brand"
             ],
-            "title": "Role"
+            "title": "Role",
+            "type": "string"
           },
           "is_active": {
-            "type": "boolean",
-            "title": "Is Active"
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tenant Id"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "role",
           "is_active"
         ],
-        "title": "UserPatch"
+        "title": "UserPatch",
+        "type": "object"
       },
       "UserWrite": {
+        "additionalProperties": false,
         "properties": {
           "email": {
-            "type": "string",
             "maxLength": 320,
             "minLength": 3,
-            "title": "Email"
+            "title": "Email",
+            "type": "string"
           },
           "password": {
-            "type": "string",
             "maxLength": 256,
             "minLength": 12,
-            "title": "Password"
+            "title": "Password",
+            "type": "string"
           },
           "role": {
-            "type": "string",
+            "default": "marketer",
             "enum": [
               "marketer",
-              "admin"
+              "admin",
+              "brand"
             ],
             "title": "Role",
-            "default": "marketer"
+            "type": "string"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tenant Id"
           }
         },
-        "additionalProperties": false,
-        "type": "object",
         "required": [
           "email",
           "password"
         ],
-        "title": "UserWrite"
+        "title": "UserWrite",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -7052,6 +7635,333 @@
         ],
         "title": "ContactRecord",
         "type": "object"
+      },
+      "Body_brand_preview_api_v1_brand_imports_preview_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_brand_preview_api_v1_brand_imports_preview_post"
+      },
+      "Body_brand_upload_api_v1_brand_imports_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "mapping": {
+            "type": "string",
+            "title": "Mapping"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "mapping"
+        ],
+        "title": "Body_brand_upload_api_v1_brand_imports_post"
+      },
+      "BrandContext": {
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Tenant Id"
+          },
+          "tenant_name": {
+            "type": "string",
+            "title": "Tenant Name"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "source_id",
+          "timezone"
+        ],
+        "title": "BrandContext"
+      },
+      "ColumnMapping": {
+        "properties": {
+          "phone": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 199.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 199.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "time": {
+            "type": "integer",
+            "maximum": 199.0,
+            "minimum": 0.0,
+            "title": "Time"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "time"
+        ],
+        "title": "ColumnMapping"
+      },
+      "FilePreview": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ImportColumn"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "total_rows": {
+            "type": "integer",
+            "title": "Total Rows"
+          },
+          "sheet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheet Name"
+          },
+          "encoding": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encoding"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ColumnMapping"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valid_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Rows"
+          },
+          "invalid_rows": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalid Rows"
+          },
+          "sample": {
+            "items": {
+              "$ref": "#/components/schemas/MappingSample"
+            },
+            "type": "array",
+            "title": "Sample"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/MappingError"
+            },
+            "type": "array",
+            "title": "Errors"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "columns",
+          "total_rows",
+          "sheet_name",
+          "encoding",
+          "timezone",
+          "mapping",
+          "valid_rows",
+          "invalid_rows",
+          "sample",
+          "errors"
+        ],
+        "title": "FilePreview"
+      },
+      "ImportColumn": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "examples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Examples"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index",
+          "name",
+          "examples"
+        ],
+        "title": "ImportColumn"
+      },
+      "MappingError": {
+        "properties": {
+          "row_number": {
+            "type": "integer",
+            "title": "Row Number"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "row_number",
+          "message"
+        ],
+        "title": "MappingError"
+      },
+      "MappingSample": {
+        "properties": {
+          "row_number": {
+            "type": "integer",
+            "title": "Row Number"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "row_number",
+          "phone",
+          "email",
+          "time",
+          "error"
+        ],
+        "title": "MappingSample"
       }
     }
   }
