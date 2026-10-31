@@ -506,6 +506,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Наблюдаемые связи арендаторов и возможности новых покупок */
+        get: operations["getVisitRadar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radar/opportunities/{opportunity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Проверить аудиторию и реальные события связи */
+        get: operations["getRadarAudience"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radar/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Создать сегмент, правило и кампанию из проверенной возможности */
+        post: operations["launchRadarCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/demo/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Явно загрузить синтетический пример через задания импорта */
+        post: operations["importRadarDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -923,6 +991,260 @@ export interface components {
             coverage_to?: string | null;
             /** @description Типы событий, для которых источник заявляет полноту. Пустой массив допустим; null запрещён. */
             covered_event_types?: ("visit" | "purchase" | "booking")[];
+        };
+        /** RadarOptions */
+        RadarOptions: {
+            /**
+             * Lookback Days
+             * @default 90
+             */
+            lookback_days: number;
+            /**
+             * Min Shared Customers
+             * @default 3
+             */
+            min_shared_customers: number;
+            /**
+             * Min Lift
+             * @default 1.1
+             */
+            min_lift: number;
+        };
+        /** RadarNode */
+        RadarNode: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Event Types */
+            event_types: ("visit" | "purchase" | "booking")[];
+            /** Coverage From */
+            coverage_from: string | null;
+            /** Coverage To */
+            coverage_to: string | null;
+            /**
+             * Coverage Status
+             * @enum {string}
+             */
+            coverage_status: "ready" | "not_loaded" | "incomplete_history" | "no_event_types";
+        };
+        /** RadarOffer */
+        RadarOffer: {
+            /**
+             * Rule Id
+             * Format: uuid
+             */
+            rule_id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Valid Until
+             * Format: date-time
+             */
+            valid_until: string;
+        };
+        /** RadarOpportunity */
+        RadarOpportunity: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Origins */
+            origins: components["schemas"]["RadarNode"][];
+            destination: components["schemas"]["RadarNode"];
+            definition: components["schemas"]["SegmentDefinition"];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /** Population Count */
+            population_count: number;
+            /** Cohort Count */
+            cohort_count: number;
+            /** Shared Count */
+            shared_count: number;
+            /** Destination Count */
+            destination_count: number;
+            /** Candidate Count */
+            candidate_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Conditional Rate */
+            conditional_rate: number;
+            /** Baseline Rate */
+            baseline_rate: number;
+            /** Lift */
+            lift: number;
+            /** Explanation */
+            explanation: string;
+            /** Offers */
+            offers: components["schemas"]["RadarOffer"][];
+        };
+        /** RadarReport */
+        RadarReport: {
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            options: components["schemas"]["RadarOptions"];
+            /** Customer Count */
+            customer_count: number;
+            /** Verified Customer Count */
+            verified_customer_count: number;
+            /** Unknown Customer Count */
+            unknown_customer_count: number;
+            /** Nodes */
+            nodes: components["schemas"]["RadarNode"][];
+            /** Opportunities */
+            opportunities: components["schemas"]["RadarOpportunity"][];
+            /** Total Opportunity Count */
+            total_opportunity_count: number;
+            /** Empty Reason */
+            empty_reason: ("no_data" | "insufficient_history" | "insufficient_support") | null;
+        };
+        /** RadarCustomer */
+        RadarCustomer: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Global Customer Key */
+            global_customer_key: string | null;
+            /** Display Name */
+            display_name: string | null;
+            /** Observed Events */
+            observed_events: components["schemas"]["RadarEvidence"][];
+        };
+        /** RadarEvidence */
+        RadarEvidence: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "visit" | "purchase" | "booking";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
+        /** RadarAudience */
+        RadarAudience: {
+            opportunity: components["schemas"]["RadarOpportunity"];
+            /** Items */
+            items: components["schemas"]["RadarCustomer"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Shared Examples */
+            shared_examples: components["schemas"]["RadarCustomer"][];
+        };
+        /** RadarCampaignWrite */
+        RadarCampaignWrite: {
+            /**
+             * Lookback Days
+             * @default 90
+             */
+            lookback_days: number;
+            /**
+             * Min Shared Customers
+             * @default 3
+             */
+            min_shared_customers: number;
+            /**
+             * Min Lift
+             * @default 1.1
+             */
+            min_lift: number;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /**
+             * Offer Rule Id
+             * Format: uuid
+             */
+            offer_rule_id: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "push";
+            /** Name */
+            name: string;
+            /**
+             * Idempotency Key
+             * Format: uuid
+             */
+            idempotency_key: string;
+        };
+        /** RadarCampaignResult */
+        RadarCampaignResult: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /**
+             * Recommendation Rule Id
+             * Format: uuid
+             */
+            recommendation_rule_id: string;
+            /** Created */
+            created: boolean;
+        };
+        /** RadarDemoWrite */
+        RadarDemoWrite: {
+            /**
+             * Stage
+             * @default initial
+             * @enum {string}
+             */
+            stage: "initial" | "followup";
+        };
+        /** RadarDemoResult */
+        RadarDemoResult: {
+            /** Job Ids */
+            job_ids: string[];
+            /** Description */
+            description: string;
         };
     };
     responses: never;
@@ -3456,6 +3778,331 @@ export interface operations {
                 };
                 content: {
                     "text/csv": string;
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getVisitRadar: {
+        parameters: {
+            query?: {
+                lookback_days?: number;
+                min_shared_customers?: number;
+                min_lift?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarReport"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getRadarAudience: {
+        parameters: {
+            query?: {
+                lookback_days?: number;
+                min_shared_customers?: number;
+                min_lift?: number;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarAudience"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    launchRadarCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RadarCampaignWrite"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCampaignResult"];
+                };
+            };
+            /** @description Успех */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCampaignResult"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    importRadarDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RadarDemoWrite"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarDemoResult"];
                 };
             };
             /** @description Нет сессии */

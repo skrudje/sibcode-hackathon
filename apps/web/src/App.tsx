@@ -5,6 +5,7 @@ import {
   Routes,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -58,6 +59,7 @@ import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
 import { DesktopConnection, ExportDownload } from "./components/desktop";
 import { Workspace } from "./components/workspace";
+import { VisitRadar } from "./components/radar";
 
 
 function Message({
@@ -366,6 +368,7 @@ function Layout({ email }: { email: string }) {
         <Route path="/segments" element={<Segments />} />
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/radar" element={<VisitRadar />} />
         <Route path="*" element={<Empty title="Страница не найдена" text="Выберите раздел в меню слева." />} />
       </Routes>
       {help && (
@@ -451,6 +454,7 @@ function Overview() {
               {demo.isPending ? demo.step : data?.customer_count ? "Повторить демозагрузку" : "Запустить демосценарий"}
             </Button>
             <Button asChild><Link to="/sources"><Upload size={15} /> Загрузить данные</Link></Button>
+            <Button asChild variant="outline"><Link to="/radar"><Sparkles size={15} /> Радар новых визитов</Link></Button>
           </>
         }
       />
@@ -2008,6 +2012,7 @@ function CampaignForm({
 }
 
 function Campaigns() {
+  const [searchParams] = useSearchParams();
   const client = useQueryClient(),
     campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns"),
     segments = useData<Schema<"SegmentPage">>(["segments"], "/segments"),
@@ -2015,7 +2020,7 @@ function Campaigns() {
       ["rules"],
       "/recommendation-rules",
     );
-  const [selected, setSelected] = useState(""),
+  const [selected, setSelected] = useState(searchParams.get("campaign") ?? ""),
     [create, setCreate] = useState(false),
     [key, setKey] = useState(() => crypto.randomUUID());
   const cid = selected || campaigns.data?.items[0]?.id,

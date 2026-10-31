@@ -24,6 +24,9 @@ from app.modules.ingestion.adapters import MAX_BYTES
 from app.modules.segments.service import destination_compatible, evaluate, evaluation_summary, recommendations, scoped, validate_definition
 from app.modules.sources.contracts import SourceCoveragePatch
 from app.modules.sources.service import update_coverage
+from app.modules.radar import service as radar_service
+from app.modules.radar.contracts import RadarAudience, RadarCampaignResult, RadarCampaignWrite, RadarDemoResult, RadarDemoWrite, RadarOptions, RadarReport
+from app.modules.radar.demo import enqueue as enqueue_radar_demo
 
 app = FastAPI(title='Хрюкерсы CDP', version='0.1.0')
 log = logging.getLogger('hryukers')
@@ -398,3 +401,34 @@ def demo_file(name: str, user: CurrentUser):
 
 
 app.openapi = lambda: json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+
+
+def radar_options(lookback_days: Annotated[int, Query(ge=1, le=365)] = 90,
+                  min_shared_customers: Annotated[int, Query(ge=2, le=1000)] = 3,
+                  min_lift: Annotated[float, Query(ge=1.01, le=100, allow_inf_nan=False)] = 1.1):
+    return RadarOptions(lookback_days=lookback_days, min_shared_customers=min_shared_customers, min_lift=min_lift)
+
+
+RadarQuery = Annotated[RadarOptions, Depends(radar_options)]
+
+
+@app.get('/api/v1/radar', response_model=RadarReport)
+def radar_report(user: CurrentUser, options: RadarQuery):
+    return radar_service.snapshot(user.mall_id, options)
+
+
+@app.get('/api/v1/radar/opportunities/{opportunity_id}', response_model=RadarAudience)
+def radar_audience(opportunity_id: UUID, user: CurrentUser, options: RadarQuery, limit: Limit = 20, offset: Offset = 0):
+    return radar_service.snapshot(user.mall_id, options, opportunity_id, limit, offset)
+
+
+@app.post('/api/v1/radar/campaigns', status_code=201, response_model=RadarCampaignResult)
+def radar_campaign(body: RadarCampaignWrite, user: CurrentUser, response: Response):
+    result = radar_service.launch(user.mall_id, body)
+    response.status_code = 201 if result['created'] else 200
+    return result
+
+
+@app.post('/api/v1/demo/radar', status_code=202, response_model=RadarDemoResult)
+def radar_demo(body: RadarDemoWrite, user: CurrentUser, db: DB):
+    return enqueue_radar_demo(db, user.mall_id, body.stage)

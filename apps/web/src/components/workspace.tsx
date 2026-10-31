@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight, Database, GitBranch, HelpCircle, LayoutDashboard, Link2,
-  LoaderCircle, LogOut, PanelLeft, RefreshCw, Search, Send, Sparkles, Users,
+  LoaderCircle, LogOut, PanelLeft, Radar, RefreshCw, Search, Send, Sparkles, Users,
 } from "lucide-react";
 import { api } from "../api";
 import { desktop } from "../transport";
@@ -17,6 +17,7 @@ export const workspaceLinks = [
   { to: "/segments", label: "Сегменты", description: "Условия отбора и участники", icon: GitBranch },
   { to: "/recommendations", label: "Рекомендации", description: "Правила и предложения арендаторов", icon: Sparkles },
   { to: "/campaigns", label: "Кампании", description: "Подготовка аудитории и выгрузка CSV", icon: Send },
+  { to: "/radar", label: "Радар новых визитов", description: "Связи арендаторов и новые аудитории", icon: Radar },
 ];
 
 const sidebarKey = "hryukers.sidebar-collapsed";
@@ -70,7 +71,7 @@ export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
         event.preventDefault();
         setCollapsed((value) => !value);
       }
-      if (event.altKey && !event.ctrlKey && !event.metaKey && /^[1-6]$/.test(key)) {
+      if (event.altKey && !event.ctrlKey && !event.metaKey && /^[1-9]$/.test(key) && workspaceLinks[Number(key) - 1]) {
         event.preventDefault();
         navigate(workspaceLinks[Number(key) - 1].to);
         setCommands(false);

@@ -42,6 +42,10 @@
     },
     {
       "name": "exports"
+    },
+    {
+      "name": "radar",
+      "description": "Радар новых визитов; наблюдаемые связи не означают причинность или вероятность покупки."
     }
   ],
   "paths": {
@@ -3352,6 +3356,466 @@
           }
         ]
       }
+    },
+    "/api/v1/radar": {
+      "get": {
+        "operationId": "getVisitRadar",
+        "summary": "Наблюдаемые связи арендаторов и возможности новых покупок",
+        "tags": [
+          "radar"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarReport"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "min_shared_customers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 1000,
+              "minimum": 2,
+              "title": "Min Shared Customers",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "min_lift",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1.1,
+              "maximum": 100,
+              "minimum": 1.01,
+              "title": "Min Lift",
+              "type": "number"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/radar/opportunities/{opportunity_id}": {
+      "get": {
+        "operationId": "getRadarAudience",
+        "summary": "Проверить аудиторию и реальные события связи",
+        "tags": [
+          "radar"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarAudience"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "opportunity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Lookback Days",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "min_shared_customers",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 1000,
+              "minimum": 2,
+              "title": "Min Shared Customers",
+              "type": "integer"
+            }
+          },
+          {
+            "name": "min_lift",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1.1,
+              "maximum": 100,
+              "minimum": 1.01,
+              "title": "Min Lift",
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/radar/campaigns": {
+      "post": {
+        "operationId": "launchRadarCampaign",
+        "summary": "Создать сегмент, правило и кампанию из проверенной возможности",
+        "tags": [
+          "radar"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarCampaignResult"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarCampaignResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RadarCampaignWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/demo/radar": {
+      "post": {
+        "operationId": "importRadarDemo",
+        "summary": "Явно загрузить синтетический пример через задания импорта",
+        "tags": [
+          "radar"
+        ],
+        "responses": {
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RadarDemoResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RadarDemoWrite"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5156,6 +5620,582 @@
         },
         "additionalProperties": false,
         "minProperties": 1
+      },
+      "RadarOptions": {
+        "additionalProperties": false,
+        "properties": {
+          "lookback_days": {
+            "default": 90,
+            "maximum": 365,
+            "minimum": 1,
+            "title": "Lookback Days",
+            "type": "integer"
+          },
+          "min_shared_customers": {
+            "default": 3,
+            "maximum": 1000,
+            "minimum": 2,
+            "title": "Min Shared Customers",
+            "type": "integer"
+          },
+          "min_lift": {
+            "default": 1.1,
+            "maximum": 100,
+            "minimum": 1.01,
+            "title": "Min Lift",
+            "type": "number"
+          }
+        },
+        "title": "RadarOptions",
+        "type": "object"
+      },
+      "RadarNode": {
+        "additionalProperties": false,
+        "properties": {
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "event_types": {
+            "items": {
+              "enum": [
+                "visit",
+                "purchase",
+                "booking"
+              ],
+              "type": "string"
+            },
+            "title": "Event Types",
+            "type": "array"
+          },
+          "coverage_from": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage From"
+          },
+          "coverage_to": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage To"
+          },
+          "coverage_status": {
+            "enum": [
+              "ready",
+              "not_loaded",
+              "incomplete_history",
+              "no_event_types"
+            ],
+            "title": "Coverage Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "code",
+          "name",
+          "category",
+          "event_types",
+          "coverage_from",
+          "coverage_to",
+          "coverage_status"
+        ],
+        "title": "RadarNode",
+        "type": "object"
+      },
+      "RadarOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_id": {
+            "format": "uuid",
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "title",
+          "description",
+          "valid_until"
+        ],
+        "title": "RadarOffer",
+        "type": "object"
+      },
+      "RadarOpportunity": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "origins": {
+            "items": {
+              "$ref": "#/components/schemas/RadarNode"
+            },
+            "title": "Origins",
+            "type": "array"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/RadarNode"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/SegmentDefinition"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "window_start": {
+            "format": "date-time",
+            "title": "Window Start",
+            "type": "string"
+          },
+          "population_count": {
+            "title": "Population Count",
+            "type": "integer"
+          },
+          "cohort_count": {
+            "title": "Cohort Count",
+            "type": "integer"
+          },
+          "shared_count": {
+            "title": "Shared Count",
+            "type": "integer"
+          },
+          "destination_count": {
+            "title": "Destination Count",
+            "type": "integer"
+          },
+          "candidate_count": {
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "unknown_count": {
+            "title": "Unknown Count",
+            "type": "integer"
+          },
+          "conditional_rate": {
+            "title": "Conditional Rate",
+            "type": "number"
+          },
+          "baseline_rate": {
+            "title": "Baseline Rate",
+            "type": "number"
+          },
+          "lift": {
+            "title": "Lift",
+            "type": "number"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/RadarOffer"
+            },
+            "title": "Offers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "origins",
+          "destination",
+          "definition",
+          "as_of",
+          "window_start",
+          "population_count",
+          "cohort_count",
+          "shared_count",
+          "destination_count",
+          "candidate_count",
+          "unknown_count",
+          "conditional_rate",
+          "baseline_rate",
+          "lift",
+          "explanation",
+          "offers"
+        ],
+        "title": "RadarOpportunity",
+        "type": "object"
+      },
+      "RadarReport": {
+        "additionalProperties": false,
+        "properties": {
+          "evaluated_at": {
+            "format": "date-time",
+            "title": "Evaluated At",
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/RadarOptions"
+          },
+          "customer_count": {
+            "title": "Customer Count",
+            "type": "integer"
+          },
+          "verified_customer_count": {
+            "title": "Verified Customer Count",
+            "type": "integer"
+          },
+          "unknown_customer_count": {
+            "title": "Unknown Customer Count",
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/RadarNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "opportunities": {
+            "items": {
+              "$ref": "#/components/schemas/RadarOpportunity"
+            },
+            "title": "Opportunities",
+            "type": "array"
+          },
+          "total_opportunity_count": {
+            "title": "Total Opportunity Count",
+            "type": "integer"
+          },
+          "empty_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_data",
+                  "insufficient_history",
+                  "insufficient_support"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empty Reason"
+          }
+        },
+        "required": [
+          "evaluated_at",
+          "options",
+          "customer_count",
+          "verified_customer_count",
+          "unknown_customer_count",
+          "nodes",
+          "opportunities",
+          "total_opportunity_count",
+          "empty_reason"
+        ],
+        "title": "RadarReport",
+        "type": "object"
+      },
+      "RadarCustomer": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "global_customer_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Global Customer Key"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "observed_events": {
+            "items": {
+              "$ref": "#/components/schemas/RadarEvidence"
+            },
+            "title": "Observed Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "global_customer_key",
+          "display_name",
+          "observed_events"
+        ],
+        "title": "RadarCustomer",
+        "type": "object"
+      },
+      "RadarEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "format": "uuid",
+            "title": "Event Id",
+            "type": "string"
+          },
+          "tenant_id": {
+            "format": "uuid",
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "event_type": {
+            "enum": [
+              "visit",
+              "purchase",
+              "booking"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "tenant_id",
+          "event_type",
+          "occurred_at"
+        ],
+        "title": "RadarEvidence",
+        "type": "object"
+      },
+      "RadarAudience": {
+        "additionalProperties": false,
+        "properties": {
+          "opportunity": {
+            "$ref": "#/components/schemas/RadarOpportunity"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RadarCustomer"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "shared_examples": {
+            "items": {
+              "$ref": "#/components/schemas/RadarCustomer"
+            },
+            "title": "Shared Examples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "opportunity",
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "shared_examples"
+        ],
+        "title": "RadarAudience",
+        "type": "object"
+      },
+      "RadarCampaignWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "lookback_days": {
+            "default": 90,
+            "maximum": 365,
+            "minimum": 1,
+            "title": "Lookback Days",
+            "type": "integer"
+          },
+          "min_shared_customers": {
+            "default": 3,
+            "maximum": 1000,
+            "minimum": 2,
+            "title": "Min Shared Customers",
+            "type": "integer"
+          },
+          "min_lift": {
+            "default": 1.1,
+            "maximum": 100,
+            "minimum": 1.01,
+            "title": "Min Lift",
+            "type": "number"
+          },
+          "opportunity_id": {
+            "format": "uuid",
+            "title": "Opportunity Id",
+            "type": "string"
+          },
+          "offer_rule_id": {
+            "format": "uuid",
+            "title": "Offer Rule Id",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms",
+              "push"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "format": "uuid",
+            "title": "Idempotency Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "opportunity_id",
+          "offer_rule_id",
+          "channel",
+          "name",
+          "idempotency_key"
+        ],
+        "title": "RadarCampaignWrite",
+        "type": "object"
+      },
+      "RadarCampaignResult": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "format": "uuid",
+            "title": "Campaign Id",
+            "type": "string"
+          },
+          "segment_id": {
+            "format": "uuid",
+            "title": "Segment Id",
+            "type": "string"
+          },
+          "recommendation_rule_id": {
+            "format": "uuid",
+            "title": "Recommendation Rule Id",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "segment_id",
+          "recommendation_rule_id",
+          "created"
+        ],
+        "title": "RadarCampaignResult",
+        "type": "object"
+      },
+      "RadarDemoWrite": {
+        "additionalProperties": false,
+        "properties": {
+          "stage": {
+            "default": "initial",
+            "enum": [
+              "initial",
+              "followup"
+            ],
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "title": "RadarDemoWrite",
+        "type": "object"
+      },
+      "RadarDemoResult": {
+        "additionalProperties": false,
+        "properties": {
+          "job_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Job Ids",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_ids",
+          "description"
+        ],
+        "title": "RadarDemoResult",
+        "type": "object"
       }
     }
   }

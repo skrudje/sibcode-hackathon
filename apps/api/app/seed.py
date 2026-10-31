@@ -10,6 +10,7 @@ from sqlalchemy import select
 from app.core.config import ROOT, Clock, settings
 from app.core.db import SessionLocal, lock
 from app.models import Campaign, ContactChannelState, Mall, RecommendationRule, Segment, Source, Tenant, User
+from app.modules.radar.demo import generate_files as generate_radar_files
 
 
 def generate_files(reference):
@@ -42,6 +43,7 @@ def generate_files(reference):
     for row in book.active.iter_rows(min_row=2):
         row[7].value = shift(row[7].value)
     book.save(out / 'pos_B.xlsx')
+    generate_radar_files(reference)
     return manifest
 
 
