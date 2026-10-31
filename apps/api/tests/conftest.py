@@ -8,6 +8,7 @@ TEST_URL = os.environ.get('TEST_DATABASE_URL', 'postgresql+psycopg://hryukers:hr
 if not TEST_URL.rsplit('/', 1)[-1].endswith('_test'):
     raise RuntimeError('Tests require a separate database ending in _test')
 os.environ['DATABASE_URL'] = TEST_URL
+os.environ['SEED_WORKSPACE_DATA'] = 'false'
 
 from sqlalchemy.engine import make_url
 from alembic import command
@@ -49,11 +50,19 @@ def client():
 
 
 @pytest.fixture
+def admin_client():
+    with TestClient(app, headers={'Origin': settings.allowed_origins.split(',')[0]}) as c:
+        response = c.post('/api/v1/auth/login', json={'email': settings.admin_email, 'password': settings.admin_password})
+        assert response.status_code == 200
+        yield c
+
+
+@pytest.fixture
 def dataset(client, monkeypatch):
     from app.modules.ingestion import service
     from app.models import Source
     import json
-    manifest = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    manifest = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     monkeypatch.setattr(service, 'fetch_api', lambda source_id: (settings.path('demo_dir') / 'api_A.json').read_bytes())
     ids = manifest['ids']
     for code in ['a', 'b', 'c']:

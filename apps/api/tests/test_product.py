@@ -53,7 +53,7 @@ def test_full_dataset_and_contract(client, dataset):
     cid = g001(client)
     profile = client.get(f'/api/v1/customers/{cid}').json()
     assert len(profile['external_identities']) == 2 and profile['event_count'] == 2
-    spec = json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+    spec = json.loads((ROOT / 'docs/api/openapi.json').read_text())
     registry = Registry().with_resource('urn:hryukers:openapi', Resource.from_contents(spec, default_specification=DRAFT202012))
     cases = [('/summary', 'Summary'), ('/sources', 'SourcePage'), ('/imports', 'ImportJobPage'), ('/customers', 'CustomerPage'), (f'/customers/{cid}', 'CustomerDetail'), (f'/customers/{cid}/events', 'EventPage'), (f'/customers/{cid}/recommendations', 'RecommendationResult'), ('/segments', 'SegmentPage'), ('/recommendation-rules', 'RecommendationRulePage'), ('/campaigns', 'CampaignPage')]
     for path, schema in cases:
@@ -149,7 +149,7 @@ def test_incomplete_coverage_inactive_offers_and_boundaries(client, dataset):
 
 def test_crashed_worker_recovery_preserves_row_results(client, monkeypatch):
     from app.modules.ingestion.dispatcher import dispatch_once
-    manifest = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    manifest = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     monkeypatch.setattr(service, 'fetch_api', lambda _: (settings.path('demo_dir') / 'api_A.json').read_bytes())
     original = service.ingest_event
     counter = 0

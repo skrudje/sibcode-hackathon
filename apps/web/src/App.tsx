@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Link,
-  NavLink,
   Route,
   Routes,
-  useLocation,
+  useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,19 +15,14 @@ import {
   BookOpen,
   Check,
   CheckCheck,
-  ChevronDown,
   ChevronLeft,
   CircleAlert,
   Clapperboard,
   Database,
-  FileSpreadsheet,
   Filter,
   GitBranch,
-  HelpCircle,
-  LayoutDashboard,
   Link2,
   LoaderCircle,
-  LogOut,
   Mail,
   Plus,
   Search,
@@ -36,7 +31,6 @@ import {
   Sparkles,
   Upload,
   Users,
-  Utensils,
   X,
 } from "lucide-react";
 import {
@@ -48,30 +42,22 @@ import {
   type Rule,
   type Schema,
   type Segment,
-  type Source,
   type Tenant,
   eventNames,
-  exampleImport,
   number,
   reasonNames,
-  sourceNames,
-  uploadFile,
   useData,
-  waitImport,
   when,
 } from "./api";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
-import { ExportDownload } from "./components/desktop";
+import { ConnectionUnavailable, DesktopConnection, ExportDownload } from "./components/desktop";
+import { Workspace } from "./components/workspace";
+import { VisitRadar } from "./components/radar";
+import { Integrations } from "./components/integrations";
+import { SourceWorkspace } from "./components/source-workspace";
+import { HelpTip } from "./components/ui/help-tip";
 
-const links = [
-  { to: "/", label: "Обзор", icon: LayoutDashboard },
-  { to: "/sources", label: "Источники данных", icon: Database },
-  { to: "/customers", label: "Клиенты", icon: Users },
-  { to: "/segments", label: "Сегменты", icon: GitBranch },
-  { to: "/recommendations", label: "Рекомендации", icon: Sparkles },
-  { to: "/campaigns", label: "Кампании", icon: Send },
-];
 
 function Message({
   children,
@@ -149,7 +135,7 @@ function Title({
     <div className="page-heading">
       <div>
         {eyebrow && <div className="eyebrow">{eyebrow}</div>}
-        <h1>{title}</h1>
+        <div className="heading-with-help"><h1>{title}</h1>{title === "Сегменты" && <HelpTip term="Сегмент" />}</div>
         <p>{text}</p>
       </div>
       <div className="heading-actions">{actions}</div>
@@ -164,7 +150,7 @@ function Panel({
   className = "",
 }: {
   title?: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -278,29 +264,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
   });
   return (
     <div className="login-page">
-      <section className="login-story">
-        <Link2 size={39} />
-        <div>
-          <Badge tone="white">ХРЮКЕРСЫ · КЕЙС №2</Badge>
-          <h1>
-            Данные объединяются.
-            <br />
-            Возможности —<br />
-            открываются.
-          </h1>
-          <p>
-            Помогите посетителям найти следующее любимое место в вашем торговом
-            центре.
-          </p>
-        </div>
-        <span>Клиентская платформа · SibКод 2026</span>
-      </section>
       <main className="login-form">
-        <div className="login-mark">
-          <Link2 size={24} /> хрюкерсы<span>CDP</span>
-        </div>
+        <div className="login-mark"><span className="brand-icon"><Link2 size={23} /></span><strong>Хрюкерсы</strong><span>CDP</span></div>
         <h2>Добро пожаловать</h2>
-        <p>Войдите в кабинет управляющей компании</p>
+        <p>Войдите в рабочее пространство торгового центра</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -339,10 +306,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
           </Button>
         </form>
         <div className="login-note">
-          <ShieldCheck size={17} /> Закрытый кабинет. Только синтетические
-          демоданные.
+          <ShieldCheck size={15} /> Рабочее пространство торгового центра
         </div>
       </main>
+      <div className="login-version"><span>Клиентская платформа · SibКод 2026 · 0.1.0</span><DesktopConnection /></div>
     </div>
   );
 }
@@ -363,14 +330,8 @@ export default function App() {
     return () => window.removeEventListener("session-expired", expired);
   }, [client, me.refetch]);
   if (me.isPending) return <Loading />;
-  if (!me.data && me.error && !(me.error instanceof ApiError && me.error.status === 401))
-    return <div className="connection-failure">
-      <CircleAlert size={32} />
-      <h1>Не удалось открыть платформу</h1>
-      <p>Проверьте подключение к серверу и повторите попытку.</p>
-      <ErrorMessage error={me.error} />
-      <Button disabled={me.isFetching} onClick={() => void me.refetch()}>Повторить загрузку</Button>
-    </div>;
+  if (!me.data && me.isError && !(me.error instanceof ApiError && me.error.status === 401))
+    return <ConnectionUnavailable checking={me.isFetching} onRetry={() => void me.refetch()} />;
   if (!me.data)
     return (
       <Login
@@ -379,129 +340,36 @@ export default function App() {
         }}
       />
     );
-  return <Layout email={me.data.email} />;
+  return <Layout user={me.data} />;
 }
 
-function Layout({ email }: { email: string }) {
-  const client = useQueryClient(),
-    location = useLocation();
+function Layout({ user }: { user: Schema<"User"> }) {
+  const client = useQueryClient();
+  const navigate = useNavigate();
   const [help, setHelp] = useState(false);
   const logout = useMutation({
     mutationFn: () => api("/auth/logout", { method: "POST" }),
     onSuccess: () => {
       client.clear();
-      window.location.assign("/");
+      client.setQueryData(["me"], null);
+      navigate("/", { replace: true });
     },
   });
-  const active = links.find((l) =>
-    l.to === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(l.to),
-  );
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <Link to="/" className="brand">
-          <span className="brand-icon">
-            <Link2 size={25} />
-          </span>
-          <span>
-            хрюкерсы<small>КЛИЕНТСКАЯ ПЛАТФОРМА</small>
-          </span>
-        </Link>
-        <div className="mall-switch">
-          <span className="mall-icon">О</span>
-          <div>
-            <strong>ТЦ «Орбита»</strong>
-            <span>Управляющая компания</span>
-          </div>
-          <ChevronDown size={15} />
-        </div>
-        <div className="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav>
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="pilot-note">
-            <span className="pulse-dot" /> Пилотный проект
-            <small>Синтетические данные · Кейс №2</small>
-          </div>
-          <button className="nav-link" onClick={() => setHelp(true)}>
-            <HelpCircle size={19} /> Как работает платформа
-          </button>
-          <div className="account">
-            <span className="avatar avatar-user">МК</span>
-            <div>
-              <strong>Маркетолог УК</strong>
-              <span>{email}</span>
-            </div>
-            <button
-              className="icon-button"
-              aria-label="Выйти"
-              onClick={() => logout.mutate()}
-            >
-              <LogOut size={17} />
-            </button>
-          </div>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            Рабочее пространство <span>/</span>
-            <strong>{active?.label ?? "Профиль клиента"}</strong>
-          </div>
-          <div className="topbar-right">
-            <Badge tone="green">
-              <span className="pulse-dot" /> Рабочий кабинет
-            </Badge>
-            <button
-              className="icon-button"
-              aria-label="Помощь"
-              onClick={() => setHelp(true)}
-            >
-              <HelpCircle size={19} />
-            </button>
-            <div className="topbar-avatar">МК</div>
-          </div>
-        </header>
-        <main className="main">
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/sources" element={<Sources />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/customers/:id" element={<CustomerProfile />} />
-            <Route path="/segments" element={<Segments />} />
-            <Route path="/recommendations" element={<Recommendations />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route
-              path="*"
-              element={
-                <Empty
-                  title="Страница не найдена"
-                  text="Выберите раздел в меню слева."
-                />
-              }
-            />
-          </Routes>
-          <footer className="main-footer">
-            <span>Хрюкерсы · SibКод 2026</span>
-            <span>Единый профиль. Полезный следующий визит.</span>
-          </footer>
-        </main>
-      </div>
+    <Workspace email={user.email} role={user.role} onHelp={() => setHelp(true)} onLogout={() => logout.mutate()} loggingOut={logout.isPending}>
+      <ErrorMessage error={logout.error} />
+      <Routes>
+        <Route path="/" element={<Overview />} />
+        <Route path="/sources" element={<Sources />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/customers/:id" element={<CustomerProfile />} />
+        <Route path="/segments" element={<Segments />} />
+        <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="/radar" element={<VisitRadar />} />
+        <Route path="/integrations" element={<Integrations user={user} />} />
+        <Route path="*" element={<Empty title="Страница не найдена" text="Выберите раздел в меню слева." />} />
+      </Routes>
       {help && (
         <Dialog
           title="От данных — к следующему визиту"
@@ -514,19 +382,13 @@ function Layout({ email }: { email: string }) {
               период наблюдения и полноту доступной истории.
             </p>
             <ol className="help-steps">
-              <li>Загрузите API кинотеатра, Excel кафе и CSV книжного.</li>
-              <li>Найдите g001@example.invalid и проверьте общую историю.</li>
-              <li>Посмотрите сегмент и объяснение рекомендации книжного C.</li>
-              <li>Создайте CSV-выгрузку кампании.</li>
-              <li>
-                Загрузите дополнительную покупку посетителя 001 в C — рекомендация
-                исчезнет.
-              </li>
+              <li>Администратор настраивает API арендаторов в «Интеграциях».</li>
+              <li>Платформа по расписанию получает телефон, email и время взаимодействия.</li>
+              <li>В профиле видна общая история и происхождение контактов.</li>
+              <li>Создайте сегмент вручную или выберите возможность в радаре.</li>
+              <li>Проверьте контакты в кампании и сформируйте CSV для внешней системы.</li>
             </ol>
-            <Message>
-              Выгрузка не отправляет сообщения. Демо использует синтетические
-              контакты.
-            </Message>
+            <Message>Выгрузка не отправляет сообщения. Полнота истории задаётся явно; отсутствие записи не доказывает отсутствие посещения.</Message>
             <Button asChild>
               <Link to="/sources" onClick={() => setHelp(false)}>
                 Перейти к источникам
@@ -536,32 +398,8 @@ function Layout({ email }: { email: string }) {
           </div>
         </Dialog>
       )}
-    </div>
+    </Workspace>
   );
-}
-
-function useDemo() {
-  const client = useQueryClient(),
-    [step, setStep] = useState("");
-  const mutation = useMutation({
-    mutationFn: async () => {
-      const sources = await api<Schema<"SourcePage">>("/sources");
-      const order = { rest_api: 0, pos_xlsx: 1, crm_csv: 2 };
-      for (const source of sources.items.sort(
-        (a, b) => order[a.kind] - order[b.kind],
-      )) {
-        setStep(source.name);
-        const job = await exampleImport(source);
-        await waitImport(job.id);
-        await client.invalidateQueries();
-      }
-    },
-    onSuccess: () => {
-      setStep("");
-      void client.invalidateQueries();
-    },
-  });
-  return { ...mutation, step };
 }
 
 function Overview() {
@@ -570,78 +408,21 @@ function Overview() {
     customers = useData<Schema<"CustomerPage">>(
       ["recent-customers"],
       "/customers?limit=4",
-    ),
-    demo = useDemo();
+    );
   const data = summary.data;
   return (
     <>
       <Title
-        eyebrow="ВАШ ТОРГОВЫЙ ЦЕНТР — ОДНА ИСТОРИЯ"
         title="Обзор платформы"
-        text="Видеть клиента целиком. Находить точки роста вместе."
+        text="Состояние клиентской базы и загрузок ТЦ «Орбита»"
         actions={
-          <Button asChild variant="outline">
-            <Link to="/sources">
-              <Upload size={16} /> Загрузить данные
-            </Link>
-          </Button>
+          <>
+            <Button asChild><Link to="/sources"><Upload size={15} /> Загрузить данные</Link></Button>
+            <Button asChild variant="outline"><Link to="/radar"><Sparkles size={15} /> Радар новых визитов</Link></Button>
+          </>
         }
       />
-      <ErrorMessage error={summary.error ?? demo.error} />
-      <div className="welcome-banner">
-        <div>
-          <span className="banner-kicker">
-            <Sparkles size={15} /> БОЛЬШЕ, ЧЕМ ОТДЕЛЬНЫЕ ПОКУПКИ
-          </span>
-          <h2>
-            Следующее любимое место
-            <br />
-            вашего посетителя — рядом.
-          </h2>
-          <p>
-            Соединяйте историю арендаторов и превращайте
-            <br className="desktop" /> знакомые маршруты в новые возможности.
-          </p>
-          <Button
-            variant="dark"
-            disabled={demo.isPending}
-            onClick={() => demo.mutate()}
-          >
-            {demo.isPending ? (
-              <>
-                <LoaderCircle size={16} className="spin" />
-                {demo.step}
-              </>
-            ) : (
-              <>
-                <span>
-                  {data?.customer_count
-                    ? "Повторить демозагрузку"
-                    : "Запустить демосценарий"}
-                </span>
-                <ArrowUpRight size={17} />
-              </>
-            )}
-          </Button>
-        </div>
-        <div className="orbit-art" aria-hidden>
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="orbit orbit-three" />
-          <div className="orbit-center">
-            <Link2 size={48} />
-          </div>
-          <span className="orbit-label orbit-label-a">
-            <Clapperboard size={17} /> Кино
-          </span>
-          <span className="orbit-label orbit-label-b">
-            <Utensils size={17} /> Кафе
-          </span>
-          <span className="orbit-label orbit-label-c">
-            <BookOpen size={17} /> Книги
-          </span>
-        </div>
-      </div>
+      <ErrorMessage error={summary.error} />
       <div className="metrics">
         {[
           {
@@ -652,10 +433,10 @@ function Overview() {
             tone: "blue",
           },
           {
-            label: "Событий в истории",
+            label: "Записей в истории",
             value: data?.event_count,
             icon: GitBranch,
-            hint: "Визиты, покупки и брони",
+            hint: "Записи от арендаторов",
             tone: "purple",
           },
           {
@@ -675,7 +456,7 @@ function Overview() {
         ].map(({ label, value, icon: Icon, hint, tone }) => (
           <div className="metric" key={label}>
             <div className="metric-top">
-              <span>{label}</span>
+              <span>{label} <HelpTip term={label === "Единых профилей" ? "Профиль" : label === "Профилей с контактами" ? "Есть контакты" : label === "Источников данных" ? "Источник" : "Взаимодействие"} text={label === "Записей в истории" ? "Зафиксированные контакты с арендатором. Новые записи содержат только телефон, email и время; покупку по ним не определяем." : undefined} /></span>
               <span className={`metric-icon ${tone}`}>
                 <Icon size={19} />
               </span>
@@ -688,7 +469,7 @@ function Overview() {
       <div className="overview-grid">
         <Panel
           title="Последние загрузки"
-          subtitle="Данные, из которых складывается общая картина"
+          subtitle="Результаты последних заданий импорта"
           action={
             <Link className="text-link" to="/sources">
               Все источники
@@ -731,7 +512,7 @@ function Overview() {
           ) : (
             <Empty
               title="История начинается с данных"
-              text="Запустите демосценарий или загрузите файлы арендаторов."
+              text="Настройте API арендаторов или загрузите файлы с взаимодействиями."
               action={
                 <Button variant="outline" asChild>
                   <Link to="/sources">
@@ -863,300 +644,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
   );
 }
 
-function Sources() {
-  const client = useQueryClient(),
-    [errorJob, setErrorJob] = useState<string | null>(null),
-    [offset, setOffset] = useState(0);
-  const sources = useData<Schema<"SourcePage">>(["sources"], "/sources"),
-    tenants = useData<Schema<"TenantPage">>(["tenants"], "/tenants"),
-    demo = useDemo();
-  const jobs = useQuery({
-    queryKey: ["imports", offset],
-    queryFn: () => api<Schema<"ImportJobPage">>(`/imports?offset=${offset}`),
-    refetchInterval: (q) =>
-      q.state.data?.items.some((j) => ["queued", "running"].includes(j.status))
-        ? 2000
-        : false,
-  });
-  useEffect(() => {
-    if (
-      jobs.data?.items.some((j) => !["queued", "running"].includes(j.status))
-    ) {
-      void client.invalidateQueries({ queryKey: ["summary"] });
-      void client.invalidateQueries({ queryKey: ["sources"] });
-      void client.invalidateQueries({ queryKey: ["customers"] });
-    }
-  }, [jobs.data, client]);
-  const mutation = useMutation({
-    mutationFn: async ({
-      source,
-      file,
-      followup,
-    }: {
-      source: Source;
-      file?: File;
-      followup?: boolean;
-    }) => {
-      const job = file
-        ? await uploadFile(source, file, file.name)
-        : await exampleImport(source, followup);
-      await client.invalidateQueries({ queryKey: ["imports"] });
-      await waitImport(job.id);
-    },
-    onSuccess: () => {
-      void client.invalidateQueries();
-    },
-  });
-  const errors = useData<Schema<"ImportErrorPage">>(
-    ["import-errors", errorJob],
-    `/imports/${errorJob}/errors?limit=100`,
-    !!errorJob,
-  );
-  const names = (id: string) =>
-    tenants.data?.items.find((t) => t.id === id)?.name ?? "Арендатор";
-  return (
-    <>
-      <Title
-        title="Источники данных"
-        text="Три разных системы. Единый язык событий и клиентов."
-        actions={
-          <Button
-            disabled={demo.isPending || mutation.isPending}
-            onClick={() => demo.mutate()}
-          >
-            {demo.isPending ? (
-              <LoaderCircle className="spin" size={16} />
-            ) : (
-              <Plus size={16} />
-            )}{" "}
-            Загрузить демоданные
-          </Button>
-        }
-      />
-      <ErrorMessage error={sources.error ?? mutation.error ?? demo.error} />
-      {demo.isPending && (
-        <Message>
-          Загружаем источник: {demo.step}. Результаты появятся в журнале ниже.
-        </Message>
-      )}
-      <div className="source-grid">
-        {sources.data?.items.map((source) => {
-          const Icon =
-            source.kind === "rest_api"
-              ? Clapperboard
-              : source.kind === "pos_xlsx"
-                ? Utensils
-                : BookOpen;
-          return (
-            <Panel key={source.id} className="source-card">
-              <div className="source-card-top">
-                <span className={`source-icon ${source.kind}`}>
-                  <Icon size={24} />
-                </span>
-                <Badge tone={source.last_success_at ? "green" : "gray"}>
-                  {source.last_success_at ? (
-                    <>
-                      <Check size={12} /> Данные загружены
-                    </>
-                  ) : (
-                    "Ожидает загрузки"
-                  )}
-                </Badge>
-              </div>
-              <h2>{names(source.tenant_id)}</h2>
-              <p>{source.name}</p>
-              <span className="format-tag">
-                <FileSpreadsheet size={14} />
-                {sourceNames[source.kind]}
-              </span>
-              <div className="source-details">
-                <span>
-                  Последняя загрузка
-                  <strong>{when(source.last_success_at)}</strong>
-                </span>
-                <span>
-                  Период полноты истории
-                  <strong>{source.coverage_from && source.coverage_to ? `${when(source.coverage_from)} — ${when(source.coverage_to)}` : "Не задан"}</strong>
-                </span>
-                <span>
-                  Типы событий с полной историей
-                  <strong>{source.covered_event_types.map((type) => eventNames[type]).join(", ") || "Не заданы"}</strong>
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                className="full"
-                disabled={mutation.isPending || demo.isPending}
-                onClick={() => mutation.mutate({ source })}
-              >
-                {source.kind === "rest_api" ? (
-                  <>
-                    <Link2 size={16} />
-                    Синхронизировать API
-                  </>
-                ) : (
-                  <>
-                    <Database size={16} />
-                    Загрузить пример
-                  </>
-                )}
-              </Button>
-              {source.kind !== "rest_api" && (
-                <label className="upload-link">
-                  <Upload size={14} />
-                  Выбрать свой файл
-                  <input
-                    type="file"
-                    aria-label={`Файл ${source.name}`}
-                    accept={source.kind === "pos_xlsx" ? ".xlsx" : ".csv"}
-                    disabled={mutation.isPending || demo.isPending}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) mutation.mutate({ source, file });
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-              )}
-            </Panel>
-          );
-        })}
-      </div>
-      <Message>
-        Полнота истории задаётся источником. Отсутствие записи означает «нет
-        зарегистрированного события», а не доказанное отсутствие визита.
-      </Message>
-      <Panel
-        title="Журнал загрузок"
-        subtitle="Каждая принятая строка сохраняет свой источник и результат обработки"
-      >
-        {jobs.isPending ? (
-          <Loading />
-        ) : jobs.data?.items.length ? (
-          <>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Источник / дата</th>
-                    <th>Всего</th>
-                    <th>Принято</th>
-                    <th>Дубли</th>
-                    <th>Отклонено</th>
-                    <th>Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {jobs.data.items.map((job) => (
-                    <tr key={job.id}>
-                      <td>
-                        <strong>
-                          {
-                            sources.data?.items.find(
-                              (s) => s.id === job.source_id,
-                            )?.name
-                          }
-                        </strong>
-                        <small>{when(job.created_at)}</small>
-                      </td>
-                      <td>{job.total_rows ?? "—"}</td>
-                      <td className="green-text">{job.accepted_rows}</td>
-                      <td>{job.duplicate_rows}</td>
-                      <td>
-                        {job.rejected_rows ? (
-                          <button
-                            className="text-link amber-text"
-                            onClick={() => setErrorJob(job.id)}
-                          >
-                            {job.rejected_rows} · открыть
-                          </button>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        <StatusBadge job={job} />
-                        {job.failure_message && (
-                          <small className="red-text">
-                            {job.failure_message}
-                          </small>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <Pagination
-              offset={offset}
-              total={jobs.data.total}
-              onChange={setOffset}
-            />
-          </>
-        ) : (
-          <Empty
-            title="Пока нет загрузок"
-            text="Синхронизируйте API или загрузите CSV и Excel. Мы покажем результат каждой строки."
-          />
-        )}
-      </Panel>
-      <div className="followup-box">
-        <div>
-          <GitBranch size={21} />
-          <span>
-            <strong>Проверить изменение рекомендации</strong>
-            <small>
-              Добавьте покупку посетителя 001 в книжном C после основного
-              импорта.
-            </small>
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          disabled={mutation.isPending || !jobs.data?.items.length}
-          onClick={() => {
-            const source = sources.data?.items.find(
-              (s) => s.kind === "crm_csv",
-            );
-            if (source) mutation.mutate({ source, followup: true });
-          }}
-        >
-          Добавить покупку в C<ArrowRight size={16} />
-        </Button>
-      </div>
-      {errorJob && (
-        <Dialog title="Замечания к загрузке" onClose={() => setErrorJob(null)}>
-          <div className="dialog-body">
-            {errors.isPending ? (
-              <Loading />
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Строка</th>
-                    <th>Причина</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {errors.data?.items.map((e) => (
-                    <tr key={e.row_number}>
-                      <td>{e.row_number}</td>
-                      <td>
-                        <strong>{e.message}</strong>
-                        <small>{e.code}</small>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-            <ErrorMessage error={errors.error} />
-          </div>
-        </Dialog>
-      )}
-    </>
-  );
-}
+function Sources() { return <SourceWorkspace />; }
 
 function Customers() {
   const [search, setSearch] = useState(""),
@@ -1170,10 +658,10 @@ function Customers() {
     <>
       <Title
         title="Клиенты"
-        text="Общая история посетителя вместо разрозненных баз арендаторов."
+        text="Профили посетителей и события из всех источников"
         actions={<Badge tone="blue">{data.data?.total ?? "—"} профилей</Badge>}
       />
-      <Panel>
+      <Panel className="customer-browser">
         <div className="table-toolbar">
           <label className="search-input">
             <Search size={18} />
@@ -1471,7 +959,7 @@ function ConditionEditor({
           onClick={() =>
             onChange([
               ...conditions,
-              { tenant_id: tenants[0]?.id ?? "", event_types: ["purchase"] },
+              { tenant_id: tenants[0]?.id ?? "", event_types: ["interaction"] },
             ])
           }
         >
@@ -1500,7 +988,7 @@ function ConditionEditor({
             ))}
           </select>
           <div className="type-checks">
-            {(["visit", "purchase", "booking"] as const).map((type) => (
+            {(["interaction", ...condition.event_types.filter(type => type !== "interaction")] as const).map((type) => (
               <label key={type}>
                 <input
                   type="checkbox"
@@ -1555,13 +1043,13 @@ function SegmentForm({
     [days, setDays] = useState(initial?.definition.lookback_days ?? 90),
     [include, setInclude] = useState<Schema<"EventCondition">[]>(
       initial?.definition.include_all ?? [
-        { tenant_id: tenantId("A"), event_types: ["visit"] },
-        { tenant_id: tenantId("B"), event_types: ["purchase"] },
+        { tenant_id: tenantId("A"), event_types: ["interaction"] },
+        { tenant_id: tenantId("B"), event_types: ["interaction"] },
       ],
     ),
     [exclude, setExclude] = useState<Schema<"EventCondition">[]>(
       initial?.definition.exclude_any ?? [
-        { tenant_id: tenantId("C"), event_types: ["purchase"] },
+        { tenant_id: tenantId("C"), event_types: ["interaction"] },
       ],
     );
   const mutation = useMutation({
@@ -1603,7 +1091,7 @@ function SegmentForm({
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={120}
-            placeholder="Например: кино и кафе без покупки в книжном"
+            placeholder="Например: гости кинотеатра, ещё не знакомые с книжным"
           />
         </label>
         <label>
@@ -1703,7 +1191,7 @@ function Segments() {
             <>
               <Panel
                 title={segment.name}
-                subtitle={`Срез: ${when(members.data?.evaluation.as_of)} · КРСК`}
+                subtitle={<>Срез: {when(members.data?.evaluation.as_of)} · КРСК <HelpTip term="Дата среза" /></>}
                 action={
                   <Button
                     size="sm"
@@ -1755,7 +1243,7 @@ function Segments() {
                     <div key={String(label)}>
                       <span className={`dot dot-${tone}`} />
                       <strong>{value ?? "—"}</strong>
-                      <small>{label}</small>
+                      <small>{label}{label === "Недостаточно данных" && <HelpTip term="Недостаточно данных" />}</small>
                     </div>
                   ))}
                 </div>
@@ -1965,7 +1453,7 @@ function RuleForm({
         </div>
         <div className="form-grid">
           <label>
-            Бизнес-приоритет · 1–100
+            <span>Бизнес-приоритет · 1–100 <HelpTip term="Приоритет" /></span>
             <input
               type="number"
               min="1"
@@ -1989,7 +1477,7 @@ function RuleForm({
           </label>
         </div>
         <Message>
-          Арендатор назначения должен быть исключён по покупкам в выбранном
+          Взаимодействие с арендатором назначения должно быть исключено в выбранном
           сегменте. Приоритет задаётся маркетологом и не является вероятностью
           покупки.
         </Message>
@@ -2094,7 +1582,7 @@ function Recommendations() {
       )}
       <Message>
         Каждая рекомендация в профиле содержит реальные события и период, за
-        который нет зарегистрированной покупки. Пустой результат тоже
+        который нет зарегистрированного взаимодействия. Пустой результат тоже
         объясняется.
       </Message>
       {edit !== undefined && (
@@ -2180,7 +1668,7 @@ function CampaignForm({
           <select value={channel} onChange={(e) => setChannel(e.target.value)}>
             <option value="email">Email</option>
             <option value="sms">SMS</option>
-            <option value="push">Push</option>
+
           </select>
         </label>
         <Message>
@@ -2200,6 +1688,7 @@ function CampaignForm({
 }
 
 function Campaigns() {
+  const [searchParams] = useSearchParams();
   const client = useQueryClient(),
     campaigns = useData<Schema<"CampaignPage">>(["campaigns"], "/campaigns"),
     segments = useData<Schema<"SegmentPage">>(["segments"], "/segments"),
@@ -2207,7 +1696,7 @@ function Campaigns() {
       ["rules"],
       "/recommendation-rules",
     );
-  const [selected, setSelected] = useState(""),
+  const [selected, setSelected] = useState(searchParams.get("campaign") ?? ""),
     [create, setCreate] = useState(false),
     [key, setKey] = useState(() => crypto.randomUUID());
   const cid = selected || campaigns.data?.items[0]?.id,
@@ -2276,16 +1765,16 @@ function Campaigns() {
             <>
               <Panel
                 title={campaign.name}
-                subtitle={`Канал: ${campaign.channel.toUpperCase()} · Срез: ${when(preview.data?.as_of)} · КРСК`}
+                subtitle={<>Канал: {campaign.channel.toUpperCase()} · Срез: {when(preview.data?.as_of)} · КРСК <HelpTip term="Дата среза" /></>}
               >
                 <div className="campaign-stats">
                   <div>
-                    <span>В сегменте</span>
+                    <span>В сегменте <HelpTip term="Сегмент" /></span>
                     <strong>{preview.data?.base_count ?? "—"}</strong>
                   </div>
                   <ArrowRight className="muted" size={23} />
                   <div>
-                    <span>Готовы к выгрузке</span>
+                    <span>Готовы к выгрузке <HelpTip term="Выгрузка" /></span>
                     <strong className="blue-text">
                       {preview.data?.eligible_count ?? "—"}
                     </strong>
@@ -2314,7 +1803,7 @@ function Campaigns() {
                           <span
                             className={count ? "dot dot-amber" : "dot dot-gray"}
                           />
-                          <span>{reasonNames[reason]}</span>
+                          <span>{reasonNames[reason]} <HelpTip term={reasonNames[reason]} /></span>
                           <strong>{count}</strong>
                         </div>
                       ),

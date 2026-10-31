@@ -10,10 +10,11 @@ from sqlalchemy import select
 from app.core.config import ROOT, Clock, settings
 from app.core.db import SessionLocal, lock
 from app.models import Campaign, ContactChannelState, Mall, RecommendationRule, Segment, Source, Tenant, User
+from app.modules.radar.demo import generate_files as generate_radar_files
 
 
 def generate_files(reference):
-    template = ROOT / 'demo/templates'
+    template = ROOT / 'apps/api/fixtures'
     manifest = json.loads((template / 'demo_scenario.json').read_text())
     old = datetime.fromisoformat(manifest['reference_time'].replace('Z', '+00:00'))
     delta = reference - old
@@ -43,11 +44,12 @@ def generate_files(reference):
     for row in book.active.iter_rows(min_row=2):
         row[time_column].value = shift(row[time_column].value)
     book.save(out / 'pos_B.xlsx')
+    generate_radar_files(reference)
     return manifest
 
 
 def seed():
-    template = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    template = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     ids = {k: UUID(v) for k, v in template['ids'].items()}
     with SessionLocal.begin() as db:
         lock(db, 'demo-seed')
@@ -60,13 +62,20 @@ def seed():
         manifest = generate_files(reference)
         if not db.scalar(select(User).where(User.email == settings.demo_email.lower())):
             db.add(User(mall_id=mall.id, email=settings.demo_email.lower(), password_hash=PasswordHash.recommended().hash(settings.demo_password)))
-        for source_info, category in zip(manifest['sources'], ['Досуг', 'Еда и напитки', 'Книги']):
+        if not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
+            db.add(User(mall_id=mall.id, email=settings.admin_email.lower(), role='admin', password_hash=PasswordHash.recommended().hash(settings.admin_password)))
+        from app.workspace_seed import CATALOG
+        for source_info, (name, category) in zip(manifest['sources'], CATALOG):
             tid, sid = UUID(source_info['tenant_id']), UUID(source_info['id'])
             if not db.get(Tenant, tid):
-                db.add(Tenant(id=tid, mall_id=mall.id, code=source_info['tenant_code'], name=source_info['tenant_name'], category=category))
+                db.add(Tenant(id=tid, mall_id=mall.id, code=source_info['tenant_code'], name=name, category=category))
                 db.flush()
+            else:
+                db.get(Tenant, tid).name = name
             if not db.get(Source, sid):
-                db.add(Source(id=sid, mall_id=mall.id, tenant_id=tid, name={'A':'API кинотеатра', 'B':'Касса кафе', 'C':'CRM книжного'}[source_info['tenant_code']], kind=source_info['kind'], covered_event_types=source_info['covered_event_types'], coverage_from=reference - timedelta(days=120), coverage_to=reference, config={'url': settings.mock_source_url} if source_info['kind'] == 'rest_api' else {}))
+                db.add(Source(id=sid, mall_id=mall.id, tenant_id=tid, name=name, kind=source_info['kind'], covered_event_types=source_info['covered_event_types'], coverage_from=reference - timedelta(days=120), coverage_to=reference, config={'url': settings.mock_source_url} if source_info['kind'] == 'rest_api' else {}))
+            else:
+                db.get(Source, sid).name = name
         if not db.get(Segment, ids['segment']):
             db.add(Segment(id=ids['segment'], mall_id=mall.id, name=manifest['segment']['name'], definition=manifest['segment']['definition']))
             db.flush()
@@ -85,6 +94,9 @@ def seed():
         if not db.get(ContactChannelState, key):
             db.add(ContactChannelState(mall_id=mall.id, channel='email', contact_normalized=key[2], last_exported_at=reference - timedelta(days=1)))
     settings.path('upload_dir').mkdir(parents=True, exist_ok=True)
+    if settings.seed_workspace_data:
+        from app.workspace_seed import prepare
+        prepare()
     print('Demo catalog and files are ready. Customer events are loaded through imports.')
 
 

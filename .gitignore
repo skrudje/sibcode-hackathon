@@ -1,6 +1,7 @@
 .env
-.env.e2e
-/.env.*.local
+.env.*
+!/.env.example
+!/.env.e2e.example
 /*.zip
 .venv/
 node_modules/
@@ -18,3 +19,16 @@ coverage.xml
 .coverage
 target/
 apps/web/src-tauri/gen/schemas/
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+*.dump
+.DS_Store
+Thumbs.db

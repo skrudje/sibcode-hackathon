@@ -107,7 +107,10 @@ async fn desktop_request(
     request: ApiRequest,
     generation: u32,
 ) -> Result<ApiResponse, String> {
-    let response = state.require_generation(generation)?.request(request).await?;
+    let response = state
+        .require_generation(generation)?
+        .request(request)
+        .await?;
     state.require_generation(generation)?;
     Ok(response)
 }

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.core.config import Clock
 
-EventType = Literal['visit', 'purchase', 'booking']
+EventType = Literal['visit', 'purchase', 'booking', 'interaction']
 Channel = Literal['email', 'sms', 'push']
 
 
@@ -59,7 +59,7 @@ class NormalizedEvent(StrictModel):
 
 class EventCondition(StrictModel):
     tenant_id: UUID
-    event_types: list[EventType] = Field(min_length=1, max_length=3)
+    event_types: list[EventType] = Field(min_length=1, max_length=4)
 
     @field_validator('event_types')
     @classmethod

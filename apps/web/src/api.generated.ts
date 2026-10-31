@@ -119,7 +119,8 @@ export interface paths {
         /** Арендаторы текущего ТЦ */
         get: operations["listTenants"];
         put?: never;
-        post?: never;
+        /** Create Tenant */
+        post: operations["create_tenant_api_v1_tenants_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -143,6 +144,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sources/{source_id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить заявленную полноту истории источника
+         * @description Только источник текущего ТЦ. Чужой или отсутствующий ID возвращает 404. Изменение сохраняется атомарно и влияет на следующий расчёт сегментов и рекомендаций. Импорт не расширяет покрытие автоматически. Полнота является явным утверждением оператора, а не результатом анализа дат покупок.
+         */
+        patch: operations["updateSourceCoverage"];
+        trace?: never;
+    };
     "/api/v1/sources/{source_id}/imports": {
         parameters: {
             query?: never;
@@ -154,7 +175,7 @@ export interface paths {
         put?: never;
         /**
          * Поставить CSV/XLSX в обработку
-         * @description Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB.
+         * @description Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB. Проверка заголовков выполняется worker: ошибки структуры сохраняются в failure_code=invalid_file_schema и failure_message задания с перечислением отсутствующих и повторяющихся колонок.
          */
         post: operations["createFileImport"];
         delete?: never;
@@ -486,6 +507,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Наблюдаемые связи арендаторов и возможности новых покупок */
+        get: operations["getVisitRadar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radar/opportunities/{opportunity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Проверить аудиторию и реальные события связи */
+        get: operations["getRadarAudience"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/radar/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Создать сегмент, правило и кампанию из проверенной возможности */
+        post: operations["launchRadarCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/demo/radar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Явно загрузить синтетический пример через задания импорта */
+        post: operations["importRadarDemo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integration List */
+        get: operations["integration_list_api_v1_integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Integration Update */
+        patch: operations["integration_update_api_v1_integrations__source_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/integrations/{source_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Integration Test */
+        post: operations["integration_test_api_v1_integrations__source_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contact Template */
+        get: operations["contact_template_api_v1_integrations_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team List */
+        get: operations["team_list_api_v1_team_get"];
+        put?: never;
+        /** Team Create */
+        post: operations["team_create_api_v1_team_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Team Update */
+        patch: operations["team_update_api_v1_team__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/demo/files/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Demo File */
+        get: operations["demo_file_api_v1_demo_files__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -517,7 +726,7 @@ export interface components {
             /** Format: email */
             email: string;
             /** @enum {string} */
-            role: "marketer";
+            role: "marketer" | "admin";
             /** Format: uuid */
             mall_id: string;
         };
@@ -550,8 +759,8 @@ export interface components {
             tenant_id: string;
             name: string;
             /** @enum {string} */
-            kind: "crm_csv" | "pos_xlsx" | "rest_api";
-            covered_event_types: ("visit" | "purchase" | "booking")[];
+            kind: "crm_csv" | "pos_xlsx" | "rest_api" | "contacts";
+            covered_event_types: ("visit" | "purchase" | "booking" | "interaction")[];
             coverage_from: string | null;
             coverage_to: string | null;
             last_success_at: string | null;
@@ -670,7 +879,7 @@ export interface components {
             tenant_id: string;
             external_event_id: string;
             /** @enum {string} */
-            event_type: "visit" | "purchase" | "booking";
+            event_type: "visit" | "purchase" | "booking" | "interaction";
             /** Format: date-time */
             occurred_at: string;
             amount: string | null;
@@ -688,7 +897,7 @@ export interface components {
         EventCondition: {
             /** Format: uuid */
             tenant_id: string;
-            event_types: ("visit" | "purchase" | "booking")[];
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
         };
         SegmentDefinition: {
             lookback_days: number;
@@ -782,14 +991,14 @@ export interface components {
             /** Format: uuid */
             tenant_id: string;
             /** @enum {string} */
-            event_type: "visit" | "purchase" | "booking";
+            event_type: "visit" | "purchase" | "booking" | "interaction";
             /** Format: date-time */
             occurred_at: string;
         };
         AbsenceCheck: {
             /** Format: uuid */
             tenant_id: string;
-            event_types: ("visit" | "purchase" | "booking")[];
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
             /** Format: date-time */
             window_start: string;
             /** Format: date-time */
@@ -905,6 +1114,469 @@ export interface components {
             total: number;
             limit: number;
             offset: number;
+        };
+        /** @description Частичное явное изменение полноты истории. Хотя бы одно поле обязательно. Неуказанные поля сохраняются. Проверяется итоговая пара дат: начало строго раньше окончания, окончание не позже текущего времени. Даты имеют часовой пояс и сохраняются в UTC; обе даты null означают неизвестный период. [] в covered_event_types снимает гарантии полноты по всем типам событий. */
+        SourceCoveragePatch: {
+            /** @description Начало заявленного периода; null допустим только при итоговом coverage_to=null. */
+            coverage_from?: string | null;
+            /** @description Конец заявленного периода; null допустим только при итоговом coverage_from=null. */
+            coverage_to?: string | null;
+            /** @description Типы событий, для которых источник заявляет полноту. Пустой массив допустим; null запрещён. */
+            covered_event_types?: ("visit" | "purchase" | "booking" | "interaction")[];
+        };
+        /** RadarOptions */
+        RadarOptions: {
+            /**
+             * Lookback Days
+             * @default 90
+             */
+            lookback_days: number;
+            /**
+             * Min Shared Customers
+             * @default 3
+             */
+            min_shared_customers: number;
+            /**
+             * Min Lift
+             * @default 1.1
+             */
+            min_lift: number;
+        };
+        /** RadarNode */
+        RadarNode: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Event Types */
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
+            /** Coverage From */
+            coverage_from: string | null;
+            /** Coverage To */
+            coverage_to: string | null;
+            /**
+             * Coverage Status
+             * @enum {string}
+             */
+            coverage_status: "ready" | "not_loaded" | "incomplete_history" | "no_event_types";
+        };
+        /** RadarOffer */
+        RadarOffer: {
+            /**
+             * Rule Id
+             * Format: uuid
+             */
+            rule_id: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /**
+             * Valid Until
+             * Format: date-time
+             */
+            valid_until: string;
+        };
+        /** RadarOpportunity */
+        RadarOpportunity: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Origins */
+            origins: components["schemas"]["RadarNode"][];
+            destination: components["schemas"]["RadarNode"];
+            definition: components["schemas"]["SegmentDefinition"];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /** Population Count */
+            population_count: number;
+            /** Cohort Count */
+            cohort_count: number;
+            /** Shared Count */
+            shared_count: number;
+            /** Destination Count */
+            destination_count: number;
+            /** Candidate Count */
+            candidate_count: number;
+            /** Unknown Count */
+            unknown_count: number;
+            /** Conditional Rate */
+            conditional_rate: number;
+            /** Baseline Rate */
+            baseline_rate: number;
+            /** Lift */
+            lift: number;
+            /** Explanation */
+            explanation: string;
+            /** Offers */
+            offers: components["schemas"]["RadarOffer"][];
+        };
+        /** RadarReport */
+        RadarReport: {
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            options: components["schemas"]["RadarOptions"];
+            /** Customer Count */
+            customer_count: number;
+            /** Verified Customer Count */
+            verified_customer_count: number;
+            /** Unknown Customer Count */
+            unknown_customer_count: number;
+            /** Nodes */
+            nodes: components["schemas"]["RadarNode"][];
+            /** Opportunities */
+            opportunities: components["schemas"]["RadarOpportunity"][];
+            /** Total Opportunity Count */
+            total_opportunity_count: number;
+            /** Empty Reason */
+            empty_reason: ("no_data" | "insufficient_history" | "insufficient_support") | null;
+        };
+        /** RadarCustomer */
+        RadarCustomer: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Global Customer Key */
+            global_customer_key: string | null;
+            /** Display Name */
+            display_name: string | null;
+            /** Observed Events */
+            observed_events: components["schemas"]["RadarEvidence"][];
+        };
+        /** RadarEvidence */
+        RadarEvidence: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "visit" | "purchase" | "booking" | "interaction";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
+        /** RadarAudience */
+        RadarAudience: {
+            opportunity: components["schemas"]["RadarOpportunity"];
+            /** Items */
+            items: components["schemas"]["RadarCustomer"][];
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Shared Examples */
+            shared_examples: components["schemas"]["RadarCustomer"][];
+        };
+        /** RadarCampaignWrite */
+        RadarCampaignWrite: {
+            /**
+             * Lookback Days
+             * @default 90
+             */
+            lookback_days: number;
+            /**
+             * Min Shared Customers
+             * @default 3
+             */
+            min_shared_customers: number;
+            /**
+             * Min Lift
+             * @default 1.1
+             */
+            min_lift: number;
+            /**
+             * Opportunity Id
+             * Format: uuid
+             */
+            opportunity_id: string;
+            /**
+             * Offer Rule Id
+             * Format: uuid
+             */
+            offer_rule_id: string;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "email" | "sms" | "push";
+            /** Name */
+            name: string;
+            /**
+             * Idempotency Key
+             * Format: uuid
+             */
+            idempotency_key: string;
+        };
+        /** RadarCampaignResult */
+        RadarCampaignResult: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /**
+             * Segment Id
+             * Format: uuid
+             */
+            segment_id: string;
+            /**
+             * Recommendation Rule Id
+             * Format: uuid
+             */
+            recommendation_rule_id: string;
+            /** Created */
+            created: boolean;
+        };
+        /** RadarDemoWrite */
+        RadarDemoWrite: {
+            /**
+             * Stage
+             * @default initial
+             * @enum {string}
+             */
+            stage: "initial" | "followup";
+        };
+        /** RadarDemoResult */
+        RadarDemoResult: {
+            /** Job Ids */
+            job_ids: string[];
+            /** Description */
+            description: string;
+        };
+        /** Body_upload_api_v1_sources__source_id__imports_post */
+        Body_upload_api_v1_sources__source_id__imports_post: {
+            /** File */
+            file: string;
+        };
+        /** ConnectionTest */
+        ConnectionTest: {
+            /**
+             * Status
+             * @default ok
+             * @constant
+             */
+            status: "ok";
+            /** Record Count */
+            record_count: number;
+            /** Message */
+            message: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntegrationInfo */
+        IntegrationInfo: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Category */
+            category: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Last Success At */
+            last_success_at: string | null;
+            /** Next Sync At */
+            next_sync_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Coverage From */
+            coverage_from: string | null;
+            /** Coverage To */
+            coverage_to: string | null;
+            /** Covered Event Types */
+            covered_event_types: string[];
+            /** Has Credentials */
+            has_credentials: boolean;
+            /** Has Api */
+            has_api: boolean;
+            /** Api Url */
+            api_url?: string | null;
+            /** Credential Env */
+            credential_env?: string | null;
+        };
+        /** IntegrationPage */
+        IntegrationPage: {
+            /** Items */
+            items: components["schemas"]["IntegrationInfo"][];
+            /** Total */
+            total: number;
+        };
+        /** IntegrationWrite */
+        IntegrationWrite: {
+            /**
+             * Api Url
+             * @default
+             */
+            api_url: string;
+            /**
+             * Interval Minutes
+             * @default 15
+             */
+            interval_minutes: number;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Credential Env */
+            credential_env?: string | null;
+            /** Coverage From */
+            coverage_from?: string | null;
+            /** Coverage To */
+            coverage_to?: string | null;
+        };
+        /** TeamMember */
+        TeamMember: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "marketer";
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** TeamPage */
+        TeamPage: {
+            /** Items */
+            items: components["schemas"]["TeamMember"][];
+            /** Total */
+            total: number;
+        };
+        /** TenantInfo */
+        TenantInfo: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** TenantWrite */
+        TenantWrite: {
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+        };
+        /** UserPatch */
+        UserPatch: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "marketer" | "admin";
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** UserWrite */
+        UserWrite: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+            /**
+             * Role
+             * @default marketer
+             * @enum {string}
+             */
+            role: "marketer" | "admin";
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** ContactRecord */
+        ContactRecord: {
+            /**
+             * Phone
+             * @default null
+             */
+            phone: string | null;
+            /**
+             * Email
+             * @default null
+             */
+            email: string | null;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
         };
     };
     responses: never;
@@ -1438,6 +2110,39 @@ export interface operations {
             };
         };
     };
+    create_tenant_api_v1_tenants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listSources: {
         parameters: {
             query?: {
@@ -1457,6 +2162,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourcePage"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateSourceCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceCoveragePatch"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
                 };
             };
             /** @description Нет сессии */
@@ -3412,6 +4197,556 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getVisitRadar: {
+        parameters: {
+            query?: {
+                lookback_days?: number;
+                min_shared_customers?: number;
+                min_lift?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarReport"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getRadarAudience: {
+        parameters: {
+            query?: {
+                lookback_days?: number;
+                min_shared_customers?: number;
+                min_lift?: number;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                opportunity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarAudience"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    launchRadarCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RadarCampaignWrite"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCampaignResult"];
+                };
+            };
+            /** @description Успех */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarCampaignResult"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    importRadarDemo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RadarDemoWrite"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RadarDemoResult"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    integration_list_api_v1_integrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationPage"];
+                };
+            };
+        };
+    };
+    integration_update_api_v1_integrations__source_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_test_api_v1_integrations__source_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contact_template_api_v1_integrations_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    team_list_api_v1_team_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamPage"];
+                };
+            };
+        };
+    };
+    team_create_api_v1_team_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_update_api_v1_team__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_file_api_v1_demo_files__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

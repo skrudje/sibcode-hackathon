@@ -23,7 +23,7 @@ def validate_definition(db, definition, mall_id):
 
 
 def destination_compatible(definition, tenant_id):
-    return any(str(x['tenant_id']) == str(tenant_id) and 'purchase' in x['event_types'] for x in definition['exclude_any'])
+    return any(str(x['tenant_id']) == str(tenant_id) and bool({'interaction', 'purchase'} & set(x['event_types'])) for x in definition['exclude_any'])
 
 
 def evaluate(db, segment, as_of=None, customer_id=None):
@@ -86,7 +86,9 @@ def recommendation_item(db, rule, result, customer_id):
     segment = db.get(Segment, rule.segment_id)
     evidence = result['evidence'][customer_id]
     names = {t.id: t.name for t in db.scalars(select(Tenant).where(Tenant.mall_id == rule.mall_id))}
-    explanation = f'Есть события: {", ".join(names[e.tenant_id] for e in evidence)}. Нет зарегистрированной покупки в «{destination.name}» за {segment.definition["lookback_days"]} дней до даты среза.'
+    excluded_types = {kind for condition in segment.definition['exclude_any'] if str(condition['tenant_id']) == str(destination.id) for kind in condition['event_types']}
+    missing = 'взаимодействия' if 'interaction' in excluded_types else 'события покупки'
+    explanation = f'Есть события: {", ".join(names[e.tenant_id] for e in evidence)}. Нет зарегистрированного {missing} в «{destination.name}» за {segment.definition["lookback_days"]} дней до даты среза.'
     return json_value(dict(rule_id=rule.id, segment_id=rule.segment_id, destination_tenant_id=destination.id, destination_tenant_name=destination.name, priority=rule.priority, offer_title=rule.offer_title, offer_description=rule.offer_description, explanation=explanation, observed_events=[dict(event_id=e.id, tenant_id=e.tenant_id, event_type=e.event_type, occurred_at=e.occurred_at) for e in evidence], absence_checks=[dict(tenant_id=c['tenant_id'], event_types=c['event_types'], window_start=result['window_start'], window_end=result['as_of'], observed_count=0, coverage_complete=True) for c in segment.definition['exclude_any']]))
 
 
