@@ -4,9 +4,9 @@
 
 ## Перед изменениями
 
-- Прочитайте `README.md`, `docs/TEAM.md`, `docs/DESKTOP.md` и относящиеся к задаче модули. Фактическая реализация важнее старых промптов в `docs/spec/prompts`.
+- Прочитайте `README.md`, `docs/TEAM.md`, `docs/DESKTOP.md` и относящиеся к задаче модули. Актуальный контракт — `docs/api/openapi.json`; примеры для seed и регрессионных тестов — `apps/api/fixtures`.
 - Работайте в своей feature-ветке. Не выполняйте force push и не переписывайте чужие изменения. Разделение задач на троих описано в `docs/TEAM.md`.
-- Не добавляйте `.env`, cookie, токены, реальные контакты, БД, node_modules, target и локальные выгрузки в Git. `.env.example` содержит только известные демозначения.
+- Не добавляйте `.env`, cookie, токены, реальные контакты, БД, node_modules, target и локальные выгрузки в Git. Только `.env.example` и `.env.e2e.example` являются публичными шаблонами. Материалы отбора, устаревшие ТЗ и личные промпты храните вне Git. Перед отправкой запускайте `python3 infra/check_repository.py`.
 
 ## Инварианты продукта
 
@@ -27,6 +27,6 @@
 - Backend: Python >=3.13, `python -m pip install -e 'apps/api[test]'`, `python -m pytest -q apps/api/tests`. Тестовая БД обязательно оканчивается `_test`.
 - E2E: только отдельный Compose-проект `hryukers-e2e`, инструкции в README. Не очищайте рабочую демонстрационную базу.
 - Desktop: инструкции в `docs/DESKTOP.md`. Не называйте Windows-сборку проверенной без успешного job на Windows.
-- Изменения общей модели оформляйте миграцией Alembic. При изменении API синхронно обновляйте `docs/spec/02_OPENAPI.json` и `apps/web/src/api.generated.ts` через `npm run generate:api`.
+- Изменения общей модели оформляйте миграцией Alembic. При изменении API синхронно обновляйте `docs/api/openapi.json` и `apps/web/src/api.generated.ts` через `npm run generate:api`.
 
 В описании результата указывайте изменённое поведение, выполненные проверки и оставшиеся ограничения. Не подменяйте реальную интеграцию данными в интерфейсе.
