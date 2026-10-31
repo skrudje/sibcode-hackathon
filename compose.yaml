@@ -1,0 +1,58 @@
+name: hryukers-cdp
+x-backend: &backend
+  image: hryukers-backend:0.1.0
+  env_file: .env
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://hryukers:${POSTGRES_PASSWORD:-hryukers-local-db}@postgres:5432/hryukers
+    REDIS_URL: redis://valkey:6379/0
+    UPLOAD_DIR: /app/.data/uploads
+    DEMO_DIR: /app/.data/demo
+    MOCK_SOURCE_URL: http://mock-source:8011/events
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5180,http://127.0.0.1:5180}
+  volumes: [uploads:/app/.data/uploads, demo:/app/.data/demo]
+  init: true
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment: {POSTGRES_DB: hryukers, POSTGRES_USER: hryukers, POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:-hryukers-local-db}'}
+    volumes: [pgdata:/var/lib/postgresql]
+    ports: ['127.0.0.1:${POSTGRES_PORT:-55432}:5432']
+    healthcheck: {test: [CMD-SHELL, 'pg_isready -U hryukers -d hryukers'], interval: 3s, timeout: 3s, retries: 20}
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: [valkey-server, --appendonly, 'yes']
+    volumes: [valkey:/data]
+    ports: ['127.0.0.1:${VALKEY_PORT:-56379}:6379']
+    healthcheck: {test: [CMD, valkey-cli, ping], interval: 3s, timeout: 3s, retries: 20}
+  init:
+    <<: *backend
+    build: {context: ., dockerfile: infra/api.Dockerfile}
+    command: [sh, -c, 'alembic -c apps/api/alembic.ini upgrade head && python -m app.seed']
+    depends_on: {postgres: {condition: service_healthy}}
+  api:
+    <<: *backend
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8010', --no-access-log]
+    depends_on: {init: {condition: service_completed_successfully}, valkey: {condition: service_healthy}}
+    healthcheck: {test: [CMD, python, -c, 'import urllib.request; urllib.request.urlopen("http://localhost:8010/api/v1/health/ready")'], interval: 5s, timeout: 4s, retries: 20}
+  worker:
+    <<: *backend
+    command: [python, -m, app.modules.ingestion.worker]
+    depends_on: {api: {condition: service_healthy}}
+  dispatcher:
+    <<: *backend
+    command: [python, -m, app.modules.ingestion.dispatcher]
+    depends_on: {api: {condition: service_healthy}}
+  mock-source:
+    <<: *backend
+    command: [uvicorn, app.mock_source:app, --host, 0.0.0.0, --port, '8011', --no-access-log]
+    depends_on: {init: {condition: service_completed_successfully}}
+  web:
+    image: hryukers-web:0.1.0
+    build: {context: ., dockerfile: infra/web.Dockerfile}
+    ports: ['127.0.0.1:${WEB_PORT:-5180}:80']
+    depends_on: {api: {condition: service_healthy}}
+volumes:
+  pgdata:
+  valkey:
+  uploads:
+  demo:

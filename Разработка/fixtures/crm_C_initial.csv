@@ -1,0 +1,2 @@
+﻿customer_id,global_customer_key,full_name,email,phone,event_id,event_type,event_time,amount,currency
+C-G002,G002,Посетитель 002,g002@example.invalid,+70000000002,C-002,purchase,2026-10-30T05:00:00Z,1200.00,RUB
