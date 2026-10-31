@@ -16,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.contracts import CampaignWrite, LoginRequest, RecommendationRuleWrite, SegmentWrite
 from app.core.config import ROOT, Clock, settings
+from app.core.contacts import normalize_contact
 from app.core.db import SessionLocal, dump, json_value
 from app.core.errors import AppError
 from app.models import AuthSession, Campaign, Customer, CustomerContact, Event, Export, ExternalIdentity, ImportJob, ImportRowResult, RecommendationRule, Segment, Source, Tenant, User
@@ -227,8 +228,10 @@ def customers(user: CurrentUser, db: DB, q: Annotated[str | None, Query(max_leng
         query = query.where(Customer.identity_status == identity_status)
     if q:
         pattern = f'%{q}%'
-        contact_ids = select(CustomerContact.customer_id).where(CustomerContact.value.ilike(pattern))
-        query = query.where(or_(Customer.display_name.ilike(pattern), Customer.global_customer_key.ilike(pattern), Customer.id.in_(contact_ids)))
+        normalized = [value for channel in ['email', 'sms'] if (value := normalize_contact(channel, q))]
+        contact_ids = select(CustomerContact.customer_id).where(or_(CustomerContact.value.ilike(pattern), CustomerContact.normalized_value.in_(normalized)))
+        identity_ids = select(ExternalIdentity.customer_id).where(ExternalIdentity.external_customer_id.ilike(pattern))
+        query = query.where(or_(Customer.display_name.ilike(pattern), Customer.global_customer_key.ilike(pattern), Customer.id.in_(contact_ids), Customer.id.in_(identity_ids)))
     return paginate(db, query.order_by(Customer.created_at.desc(), Customer.id.desc()), limit, offset, lambda c: dump(c, CUSTOMER_FIELDS))
 
 

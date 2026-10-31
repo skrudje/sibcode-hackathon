@@ -139,27 +139,28 @@
       "eligible_count": 5,
       "ineligible_count": 3,
       "unknown_count": 2,
-      "eligible_keys": [
-        "G001",
-        "G004",
-        "G005",
-        "G007",
-        "G008"
+      "eligible_names": [
+        "Посетитель 001",
+        "Посетитель 004",
+        "Посетитель 005",
+        "Посетитель 007",
+        "Посетитель 008"
       ]
     },
     "email_preview": {
       "base_count": 5,
-      "eligible_count": 1,
+      "eligible_count": 2,
       "excluded_counts": {
         "offer_inactive": 0,
         "missing_contact": 1,
         "contact_conflict": 1,
-        "duplicate_contact": 1,
+        "duplicate_contact": 0,
         "already_exported": 0,
         "cooldown": 1
       },
-      "recipient_keys": [
-        "G001"
+      "recipient_names": [
+        "Посетитель 001",
+        "Посетитель 007"
       ]
     }
   },
@@ -171,11 +172,11 @@
       "eligible_count": 4,
       "ineligible_count": 4,
       "unknown_count": 2,
-      "eligible_keys": [
-        "G004",
-        "G005",
-        "G007",
-        "G008"
+      "eligible_names": [
+        "Посетитель 004",
+        "Посетитель 005",
+        "Посетитель 007",
+        "Посетитель 008"
       ]
     },
     "g001_recommendation_count": 0

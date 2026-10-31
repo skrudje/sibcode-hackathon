@@ -39,8 +39,9 @@ def generate_files(reference):
             writer.writeheader()
             writer.writerows(rows)
     book = load_workbook(template / 'pos_B.xlsx')
+    time_column = [cell.value for cell in book.active[1]].index('дата_операции')
     for row in book.active.iter_rows(min_row=2):
-        row[7].value = shift(row[7].value)
+        row[time_column].value = shift(row[time_column].value)
     book.save(out / 'pos_B.xlsx')
     return manifest
 

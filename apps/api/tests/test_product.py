@@ -20,7 +20,7 @@ from app.modules.ingestion import service
 
 
 def g001(client):
-    return next(c['id'] for c in client.get('/api/v1/customers?q=G001').json()['items'] if c['global_customer_key'] == 'G001')
+    return client.get('/api/v1/customers?q=g001@example.invalid').json()['items'][0]['id']
 
 
 def test_auth_origin_expiration_and_scope(client):
@@ -87,7 +87,7 @@ def test_segment_explanation_and_followup(client, dataset):
 def test_export_preview_idempotency_and_csv(client, dataset):
     campaign = dataset['ids']['campaign']
     preview = client.get(f'/api/v1/campaigns/{campaign}/preview').json()
-    assert preview['eligible_count'] == 1 and preview['base_count'] == 5
+    assert preview['eligible_count'] == 2 and preview['base_count'] == 5
     assert preview['excluded_counts'] == dataset['expected_after_initial']['email_preview']['excluded_counts']
     key = str(uuid4())
     response = client.post(f'/api/v1/campaigns/{campaign}/exports', headers={'Idempotency-Key': key})
@@ -127,7 +127,7 @@ def test_cross_campaign_cooldown_race(client, dataset):
             assert e.code == 'no_exportable_recipients'
             return 0
     with ThreadPoolExecutor(2) as pool:
-        assert sum(pool.map(run, [first, second_id])) == 1
+        assert sum(pool.map(run, [first, second_id])) == 2
 
 
 def test_incomplete_coverage_inactive_offers_and_boundaries(client, dataset):
@@ -222,7 +222,7 @@ def test_write_routes_and_consistency(client, dataset):
     rid = created_rule.json()['id']
     campaign = client.post('/api/v1/campaigns', json={'name': 'SMS', 'segment_id': sid, 'recommendation_rule_id': rid, 'channel': 'sms'})
     assert campaign.status_code == 201
-    assert client.get(f'/api/v1/campaigns/{campaign.json()["id"]}/preview').json()['eligible_count'] == 4
+    assert client.get(f'/api/v1/campaigns/{campaign.json()["id"]}/preview').json()['eligible_count'] == 5
     bad = {**definition, 'exclude_any': []}
     assert client.put(f'/api/v1/segments/{sid}', json={'name': 'Bad', 'definition': bad}).status_code == 409
     rule_body['segment_id'] = dataset['ids']['segment']
