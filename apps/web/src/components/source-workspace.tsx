@@ -16,6 +16,7 @@ export function SourceWorkspace() {
   const jobs = useQuery({ queryKey: ["imports", offset], queryFn: () => api<Schema<"ImportJobPage">>(`/imports?offset=${offset}`), refetchInterval: query => query.state.data?.items.some(job => ["queued", "running"].includes(job.status)) ? 2000 : 10_000 });
   const errors = useQuery({ queryKey: ["import-errors", errorJob], queryFn: () => api<Schema<"ImportErrorPage">>(`/imports/${errorJob}/errors?limit=100`), enabled: !!errorJob });
   const upload = useMutation({ mutationFn: async ({ id, file }: { id: string; file: File }) => {
+    if (file.size > 10 * 1024 * 1024) throw new Error("Максимальный размер файла — 10 MiB");
     const form = new FormData(); form.append("file", file);
     const job = await api<Schema<"ImportJob">>(`/sources/${id}/imports`, { method: "POST", body: form });
     await client.invalidateQueries({ queryKey: ["imports"] });

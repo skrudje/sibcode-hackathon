@@ -1,13 +1,12 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight, Cable, Database, GitBranch, HelpCircle, LayoutDashboard, Link2,
   LoaderCircle, LogOut, PanelLeft, Radar, RefreshCw, Search, Send, Sparkles, Users,
 } from "lucide-react";
-import { api } from "../api";
 import { desktop } from "../transport";
-import { DesktopConnection } from "./desktop";
+import { DesktopConnection, useConnectionHealth } from "./desktop";
 import { Dialog } from "./ui/dialog";
 
 export const workspaceLinks = [
@@ -42,13 +41,7 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
   const [collapsed, setCollapsed] = useState(savedSidebar);
   const [commands, setCommands] = useState(false);
   const fetching = useIsFetching({ predicate: (q) => q.queryKey[0] !== "connection-health" });
-  const health = useQuery({
-    queryKey: ["connection-health"],
-    queryFn: ({ signal }) => api<{ status: string }>("/health/ready", { signal }),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-    retry: false,
-  });
+  const health = useConnectionHealth();
   const active = workspaceLinks.find((link) => link.to === "/"
     ? location.pathname === "/" : location.pathname.startsWith(link.to));
   const Icon = active?.icon ?? Users;

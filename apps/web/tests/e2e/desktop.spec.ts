@@ -9,7 +9,14 @@ test.beforeEach(async ({ page }) => {
     target.connectCalls = 0
     target.__TAURI_INTERNALS__ = {
       invoke: async (command, args) => {
-        if (command === 'desktop_connection') return { serverUrl: 'http://127.0.0.1:5181/' }
+        if (command === 'desktop_connection') return { serverUrl: 'http://127.0.0.1:5181/', generation: 0 }
+        if (args?.generation !== 0) throw 'Сервер изменён. Войдите заново'
+        if (command === 'desktop_check') {
+          if (target.desktopOffline) throw 'Сервер недоступен. Проверьте адрес и подключение'
+          const response = await fetch('/api/v1/health/ready')
+          if (!response.ok) throw 'Сервер недоступен'
+          return
+        }
         if (command === 'desktop_connect') { target.connectCalls += 1; throw 'Сервер недоступен. Проверьте адрес и подключение' }
         if (command !== 'desktop_request') throw new Error(`Unexpected command: ${command}`)
         if (target.desktopOffline) throw 'Сервер недоступен. Проверьте адрес и подключение'

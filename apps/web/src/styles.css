@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+.desktop-switching {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #f8fbfa;
+  color: #3c6053;
+}
+
 :root {
   font-family: Inter, "Segoe UI", Arial, sans-serif;
   color: #28333d;
