@@ -96,6 +96,12 @@ impl Backend {
             .client
             .request(method, url)
             .header("Origin", self.url.origin().ascii_serialization());
+        if matches!(
+            input.path.as_str(),
+            "/api/v1/health/ready" | "/api/v1/auth/me"
+        ) {
+            request = request.timeout(Duration::from_secs(8));
+        }
         for (key, value) in input.headers {
             if matches!(
                 key.to_ascii_lowercase().as_str(),
@@ -234,7 +240,7 @@ mod tests {
         let upload = b"--boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"test.csv\"\r\n\r\n\xef\xbb\xbfclient,event\r\n--boundary--\r\n";
         let expected_upload = upload.to_vec();
         let server = thread::spawn(move || {
-            for index in 0..2 {
+            for index in 0..3 {
                 let (mut stream, _) = listener.accept().unwrap();
                 stream
                     .set_read_timeout(Some(Duration::from_secs(10)))
@@ -268,6 +274,11 @@ mod tests {
                     assert!(header.contains("cookie: hryukers_session=test-session"));
                     assert!(header.contains("content-type: multipart/form-data; boundary=boundary"));
                     assert_eq!(&bytes[header_end..header_end + size], expected_upload);
+                } else {
+                    assert!(
+                        !header.contains("cookie:"),
+                        "A fresh connection must not reuse the previous session"
+                    );
                 }
                 let cookie = if index == 0 {
                     "Set-Cookie: hryukers_session=test-session; HttpOnly; Path=/\r\n"
@@ -304,6 +315,17 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(response.status, 200);
+        // Switching away and back creates a new jar, even for the same host.
+        Backend::new(&origin)
+            .unwrap()
+            .request(ApiRequest {
+                path: "/api/v1/auth/me".into(),
+                method: "GET".into(),
+                headers: HashMap::new(),
+                body_base64: None,
+            })
+            .await
+            .unwrap();
         server.join().unwrap();
     }
 }

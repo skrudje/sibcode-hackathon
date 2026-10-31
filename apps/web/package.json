@@ -13,7 +13,9 @@
     "desktop:frontend": "vite --host localhost --port 1420",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:desktop": "playwright test --config playwright.desktop.config.ts",
+    "test:desktop:ui": "playwright test --config playwright.desktop-ui.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.3.1",
