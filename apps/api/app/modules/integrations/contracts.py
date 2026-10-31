@@ -72,7 +72,14 @@ class TenantWrite(StrictModel):
 class UserWrite(StrictModel):
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=12, max_length=256)
-    role: Literal['marketer', 'admin'] = 'marketer'
+    role: Literal['marketer', 'admin', 'brand'] = 'marketer'
+    tenant_id: UUID | None = None
+
+    @model_validator(mode='after')
+    def tenant_assignment(self):
+        if (self.role == 'brand') != (self.tenant_id is not None):
+            raise ValueError('Для представителя бренда выберите магазин; для сотрудника УК магазин не задаётся')
+        return self
 
     @field_validator('email')
     @classmethod
@@ -84,8 +91,15 @@ class UserWrite(StrictModel):
 
 
 class UserPatch(StrictModel):
-    role: Literal['marketer', 'admin']
+    role: Literal['marketer', 'admin', 'brand']
     is_active: bool
+    tenant_id: UUID | None = None
+
+    @model_validator(mode='after')
+    def tenant_assignment(self):
+        if (self.role == 'brand') != (self.tenant_id is not None):
+            raise ValueError('Для представителя бренда выберите магазин; для сотрудника УК магазин не задаётся')
+        return self
 
 
 class IntegrationInfo(StrictModel):
@@ -131,8 +145,9 @@ class TenantInfo(StrictModel):
 class TeamMember(StrictModel):
     id: UUID
     email: str
-    role: Literal['admin', 'marketer']
+    role: Literal['admin', 'marketer', 'brand']
     is_active: bool
+    tenant_id: UUID | None
 
 
 class TeamPage(StrictModel):

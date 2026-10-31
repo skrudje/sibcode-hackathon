@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { BrandPortal } from "./components/brand-portal";
 import {
   Link,
   Route,
@@ -362,6 +363,7 @@ function Layout({ user }: { user: Schema<"User"> }) {
       navigate("/", { replace: true });
     },
   });
+  if (user.role === "brand") return <BrandPortal user={user} onLogout={() => logout.mutate()} loggingOut={logout.isPending} logoutError={logout.error} />;
   return (
     <Workspace email={user.email} role={user.role} onHelp={() => setHelp(true)} onLogout={() => logout.mutate()} loggingOut={logout.isPending}>
       <ErrorMessage error={logout.error} />
@@ -680,6 +682,7 @@ function Customers() {
       <Message>
         Записи объединяются по нормализованному телефону или email внутри ТЦ.
         Если контакты указывают на разные профили, строка отклоняется с объяснением.
+        Совпадение контакта — правило сопоставления, а не проверка личности.
       </Message>
     </>
   );

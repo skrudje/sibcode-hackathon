@@ -6,10 +6,12 @@ from datetime import datetime, timedelta
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, File, Header, Query, Request, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, Query, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from pwdlib import PasswordHash
+from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 from redis import Redis
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,6 +33,9 @@ from app.modules.radar.demo import enqueue as enqueue_radar_demo
 from app.modules.integrations import service as integrations
 from app.modules.integrations.contracts import (ConnectionTest, IntegrationInfo, IntegrationPage, IntegrationWrite,
     TeamMember, TeamPage, TenantInfo, TenantWrite, UserPatch, UserWrite)
+
+from app.modules.brand import service as brand_service
+from app.modules.brand.contracts import BrandContext, ColumnMapping, FilePreview
 
 app = FastAPI(title='Хрюкерсы CDP', version='0.1.0')
 log = logging.getLogger('hryukers')
@@ -98,9 +103,26 @@ def admin_user(user: CurrentUser):
 
 
 AdminUser = Annotated[User, Depends(admin_user)]
+
+
+def staff_user(user: CurrentUser):
+    if user.role not in ('admin', 'marketer'):
+        raise AppError('staff_required', 'Этот раздел доступен сотрудникам управляющей компании', 403)
+    return user
+
+
+def brand_user(user: CurrentUser):
+    if user.role != 'brand':
+        raise AppError('brand_required', 'Этот раздел доступен представителю бренда', 403)
+    return user
+
+
+StaffUser = Annotated[User, Depends(staff_user)]
+BrandUser = Annotated[User, Depends(brand_user)]
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
-USER_FIELDS = ['id', 'email', 'role', 'mall_id']
+USER_FIELDS = ['id', 'email', 'role', 'mall_id', 'tenant_id']
+TEAM_FIELDS = ['id', 'email', 'role', 'is_active', 'tenant_id']
 CUSTOMER_FIELDS = ['id', 'global_customer_key', 'display_name', 'identity_status', 'created_at']
 SOURCE_FIELDS = ['id', 'tenant_id', 'name', 'kind', 'covered_event_types', 'coverage_from', 'coverage_to', 'last_success_at']
 JOB_FIELDS = ['id', 'source_id', 'status', 'total_rows', 'accepted_rows', 'duplicate_rows', 'rejected_rows', 'attempt_count', 'created_at', 'finished_at', 'failure_code', 'failure_message']
@@ -167,19 +189,19 @@ def me(user: CurrentUser):
 
 
 @app.get('/api/v1/summary')
-def summary(user: CurrentUser, db: DB):
+def summary(user: StaffUser, db: DB):
     counts = dict(db.execute(select(Customer.identity_status, func.count()).where(Customer.mall_id == user.mall_id).group_by(Customer.identity_status)).all())
     jobs = db.scalars(select(ImportJob).join(Source).where(Source.mall_id == user.mall_id).order_by(ImportJob.created_at.desc()).limit(5)).all()
     return dict(customer_count=sum(counts.values()), verified_customer_count=counts.get('verified', 0), source_only_customer_count=counts.get('source_only', 0), event_count=db.scalar(select(func.count(Event.id)).where(Event.mall_id == user.mall_id)), source_count=db.scalar(select(func.count(Source.id)).where(Source.mall_id == user.mall_id)), last_imports=[dump(j, JOB_FIELDS) for j in jobs])
 
 
 @app.get('/api/v1/tenants')
-def tenants(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def tenants(user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(Tenant).where(Tenant.mall_id == user.mall_id).order_by(Tenant.code), limit, offset, lambda t: dump(t, ['id', 'code', 'name', 'category', 'is_active']))
 
 
 @app.get('/api/v1/sources')
-def sources(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def sources(user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(Source).where(Source.mall_id == user.mall_id).order_by(Source.name), limit, offset, lambda s: dump(s, SOURCE_FIELDS))
 
 
@@ -191,7 +213,7 @@ def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: AdminUser,
 
 
 @app.post('/api/v1/sources/{source_id}/imports', status_code=202)
-async def upload(source_id: UUID, user: CurrentUser, db: DB, file: UploadFile = File(...)):
+async def upload(source_id: UUID, user: StaffUser, db: DB, file: UploadFile = File(...)):
     source = scoped(db, Source, source_id, user.mall_id)
     extension = '.' + (file.filename or '').lower().rsplit('.', 1)[-1]
     allowed = {'.csv', '.xlsx'} if source.kind == 'contacts' else {'.csv'} if source.kind == 'crm_csv' else {'.xlsx'} if source.kind == 'pos_xlsx' else set()
@@ -216,7 +238,7 @@ async def upload(source_id: UUID, user: CurrentUser, db: DB, file: UploadFile = 
 
 
 @app.post('/api/v1/sources/{source_id}/sync', status_code=202)
-def sync_source(source_id: UUID, user: CurrentUser, db: DB):
+def sync_source(source_id: UUID, user: StaffUser, db: DB):
     source = db.scalar(select(Source).where(Source.id == source_id, Source.mall_id == user.mall_id).with_for_update())
     if not source:
         raise AppError('not_found', 'Источник не найден', 404)
@@ -228,7 +250,7 @@ def sync_source(source_id: UUID, user: CurrentUser, db: DB):
 
 
 @app.get('/api/v1/integrations', response_model=IntegrationPage)
-def integration_list(user: CurrentUser, db: DB):
+def integration_list(user: StaffUser, db: DB):
     rows = db.execute(select(Source, Tenant).join(Tenant, Source.tenant_id == Tenant.id)
                       .where(Source.mall_id == user.mall_id, Tenant.mall_id == user.mall_id).order_by(Tenant.name)).all()
     return {'items': [integrations.connection_public(source, tenant, user.role == 'admin') for source, tenant in rows], 'total': len(rows)}
@@ -260,7 +282,7 @@ def integration_test(source_id: UUID, user: AdminUser, db: DB):
 
 
 @app.get('/api/v1/integrations/template')
-def contact_template(user: CurrentUser):
+def contact_template(user: StaffUser):
     return Response('phone,email,time\n,visitor@example.invalid,2026-10-30T12:00:00+07:00\n'.encode('utf-8-sig'),
                     media_type='text/csv', headers={'Content-Disposition': 'attachment; filename="contacts.csv"'})
 
@@ -279,17 +301,18 @@ def create_tenant(body: TenantWrite, user: AdminUser, db: DB):
 @app.get('/api/v1/team', response_model=TeamPage)
 def team_list(user: AdminUser, db: DB):
     members = db.scalars(select(User).where(User.mall_id == user.mall_id).order_by(User.email)).all()
-    return {'items': [dump(member, ['id', 'email', 'role', 'is_active']) for member in members], 'total': len(members)}
+    return {'items': [dump(member, TEAM_FIELDS) for member in members], 'total': len(members)}
 
 
 @app.post('/api/v1/team', response_model=TeamMember, status_code=201)
 def team_create(body: UserWrite, user: AdminUser, db: DB):
     if db.scalar(select(User.id).where(User.email == body.email)):
         raise AppError('email_unavailable', 'Этот email уже используется', 409)
-    member = User(mall_id=user.mall_id, email=body.email, password_hash=PasswordHash.recommended().hash(body.password), role=body.role)
+    brand_service.validate_assignment(db, body.tenant_id, user.mall_id)
+    member = User(mall_id=user.mall_id, email=body.email, password_hash=PasswordHash.recommended().hash(body.password), role=body.role, tenant_id=body.tenant_id)
     db.add(member)
     db.commit()
-    return dump(member, ['id', 'email', 'role', 'is_active'])
+    return dump(member, TEAM_FIELDS)
 
 
 @app.patch('/api/v1/team/{user_id}', response_model=TeamMember)
@@ -301,13 +324,14 @@ def team_update(user_id: UUID, body: UserPatch, user: AdminUser, db: DB):
     if user_id == user.id:
         raise AppError('self_change_not_allowed', 'Собственную роль и доступ здесь изменить нельзя', 409)
     member = scoped(db, User, user_id, user.mall_id)
-    member.role, member.is_active = body.role, body.is_active
+    brand_service.validate_assignment(db, body.tenant_id, user.mall_id)
+    member.role, member.is_active, member.tenant_id = body.role, body.is_active, body.tenant_id
     db.commit()
-    return dump(member, ['id', 'email', 'role', 'is_active'])
+    return dump(member, TEAM_FIELDS)
 
 
 @app.get('/api/v1/imports')
-def imports(user: CurrentUser, db: DB, source_id: UUID | None = None, limit: Limit = 20, offset: Offset = 0):
+def imports(user: StaffUser, db: DB, source_id: UUID | None = None, limit: Limit = 20, offset: Offset = 0):
     query = select(ImportJob).join(Source).where(Source.mall_id == user.mall_id)
     if source_id:
         scoped(db, Source, source_id, user.mall_id)
@@ -316,18 +340,18 @@ def imports(user: CurrentUser, db: DB, source_id: UUID | None = None, limit: Lim
 
 
 @app.get('/api/v1/imports/{job_id}')
-def get_import(job_id: UUID, user: CurrentUser, db: DB):
+def get_import(job_id: UUID, user: StaffUser, db: DB):
     return dump(import_job(db, job_id, user), JOB_FIELDS)
 
 
 @app.get('/api/v1/imports/{job_id}/errors')
-def import_errors(job_id: UUID, user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def import_errors(job_id: UUID, user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     import_job(db, job_id, user)
     return paginate(db, select(ImportRowResult).where(ImportRowResult.job_id == job_id, ImportRowResult.status == 'rejected').order_by(ImportRowResult.row_number), limit, offset, lambda r: {'row_number': r.row_number, 'code': r.error_code, 'message': r.error_message})
 
 
 @app.get('/api/v1/customers')
-def customers(user: CurrentUser, db: DB, q: Annotated[str | None, Query(max_length=200)] = None, identity_status: Literal['verified', 'source_only'] | None = None, limit: Limit = 20, offset: Offset = 0):
+def customers(user: StaffUser, db: DB, q: Annotated[str | None, Query(max_length=200)] = None, identity_status: Literal['verified', 'source_only'] | None = None, limit: Limit = 20, offset: Offset = 0):
     query = select(Customer).where(Customer.mall_id == user.mall_id)
     if identity_status:
         query = query.where(Customer.identity_status == identity_status)
@@ -341,30 +365,30 @@ def customers(user: CurrentUser, db: DB, q: Annotated[str | None, Query(max_leng
 
 
 @app.get('/api/v1/customers/{customer_id}')
-def customer_detail(customer_id: UUID, user: CurrentUser, db: DB):
+def customer_detail(customer_id: UUID, user: StaffUser, db: DB):
     customer = scoped(db, Customer, customer_id, user.mall_id)
     contacts = db.scalars(select(CustomerContact).where(CustomerContact.customer_id == customer.id)).all()
     return {**dump(customer, CUSTOMER_FIELDS), 'external_identities': [dump(i, ['source_id', 'external_customer_id']) for i in db.scalars(select(ExternalIdentity).where(ExternalIdentity.customer_id == customer.id))], 'contacts': [dump(c, ['id', 'source_id', 'external_customer_id', 'channel', 'value', 'normalized_value']) for c in contacts], 'contact_conflicts': [channel for channel in ['email', 'sms', 'push'] if len({c.normalized_value for c in contacts if c.channel == channel and c.normalized_value}) > 1], 'event_count': db.scalar(select(func.count(Event.id)).where(Event.customer_id == customer.id))}
 
 
 @app.get('/api/v1/customers/{customer_id}/events')
-def customer_events(customer_id: UUID, user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def customer_events(customer_id: UUID, user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     scoped(db, Customer, customer_id, user.mall_id)
     return paginate(db, select(Event).where(Event.customer_id == customer_id).order_by(Event.occurred_at.desc(), Event.id.desc()), limit, offset, event_public)
 
 
 @app.get('/api/v1/customers/{customer_id}/recommendations')
-def customer_recs(customer_id: UUID, user: CurrentUser, db: DB, as_of: datetime | None = None):
+def customer_recs(customer_id: UUID, user: StaffUser, db: DB, as_of: datetime | None = None):
     return recommendations(db, scoped(db, Customer, customer_id, user.mall_id), as_of)
 
 
 @app.get('/api/v1/segments')
-def segments(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def segments(user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(Segment).where(Segment.mall_id == user.mall_id).order_by(Segment.created_at.desc(), Segment.id), limit, offset, lambda s: dump(s, ['id', 'name', 'definition', 'created_at', 'updated_at']))
 
 
 @app.post('/api/v1/segments', status_code=201)
-def create_segment(body: SegmentWrite, user: CurrentUser, db: DB):
+def create_segment(body: SegmentWrite, user: StaffUser, db: DB):
     definition = body.definition.model_dump(mode='json')
     validate_definition(db, definition, user.mall_id)
     segment = Segment(mall_id=user.mall_id, name=body.name, definition=definition)
@@ -374,12 +398,12 @@ def create_segment(body: SegmentWrite, user: CurrentUser, db: DB):
 
 
 @app.get('/api/v1/segments/{segment_id}')
-def get_segment(segment_id: UUID, user: CurrentUser, db: DB):
+def get_segment(segment_id: UUID, user: StaffUser, db: DB):
     return dump(scoped(db, Segment, segment_id, user.mall_id), ['id', 'name', 'definition', 'created_at', 'updated_at'])
 
 
 @app.put('/api/v1/segments/{segment_id}')
-def update_segment(segment_id: UUID, body: SegmentWrite, user: CurrentUser, db: DB):
+def update_segment(segment_id: UUID, body: SegmentWrite, user: StaffUser, db: DB):
     segment = scoped(db, Segment, segment_id, user.mall_id)
     definition = body.definition.model_dump(mode='json')
     validate_definition(db, definition, user.mall_id)
@@ -392,7 +416,7 @@ def update_segment(segment_id: UUID, body: SegmentWrite, user: CurrentUser, db: 
 
 
 @app.get('/api/v1/segments/{segment_id}/members')
-def segment_members(segment_id: UUID, user: CurrentUser, db: DB, as_of: datetime | None = None, limit: Limit = 20, offset: Offset = 0):
+def segment_members(segment_id: UUID, user: StaffUser, db: DB, as_of: datetime | None = None, limit: Limit = 20, offset: Offset = 0):
     result = evaluate(db, scoped(db, Segment, segment_id, user.mall_id), as_of)
     return dict(items=[dump(c, CUSTOMER_FIELDS) for c in result['eligible'][offset:offset + limit]], total=len(result['eligible']), limit=limit, offset=offset, evaluation=evaluation_summary(result))
 
@@ -409,12 +433,12 @@ def validate_rule(db, body, user):
 
 
 @app.get('/api/v1/recommendation-rules')
-def rules(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def rules(user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(RecommendationRule).where(RecommendationRule.mall_id == user.mall_id).order_by(RecommendationRule.priority.desc(), RecommendationRule.id), limit, offset, rule_public)
 
 
 @app.post('/api/v1/recommendation-rules', status_code=201)
-def create_rule(body: RecommendationRuleWrite, user: CurrentUser, db: DB):
+def create_rule(body: RecommendationRuleWrite, user: StaffUser, db: DB):
     validate_rule(db, body, user)
     rule = RecommendationRule(mall_id=user.mall_id, **body.model_dump())
     db.add(rule)
@@ -423,7 +447,7 @@ def create_rule(body: RecommendationRuleWrite, user: CurrentUser, db: DB):
 
 
 @app.put('/api/v1/recommendation-rules/{rule_id}')
-def update_rule(rule_id: UUID, body: RecommendationRuleWrite, user: CurrentUser, db: DB):
+def update_rule(rule_id: UUID, body: RecommendationRuleWrite, user: StaffUser, db: DB):
     rule = scoped(db, RecommendationRule, rule_id, user.mall_id)
     validate_rule(db, body, user)
     if body.segment_id != rule.segment_id and db.scalar(select(Campaign.id).where(Campaign.recommendation_rule_id == rule.id)):
@@ -439,12 +463,12 @@ def campaign_public(c):
 
 
 @app.get('/api/v1/campaigns')
-def campaigns(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def campaigns(user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(Campaign).where(Campaign.mall_id == user.mall_id).order_by(Campaign.created_at.desc(), Campaign.id), limit, offset, campaign_public)
 
 
 @app.post('/api/v1/campaigns', status_code=201)
-def create_campaign(body: CampaignWrite, user: CurrentUser, db: DB):
+def create_campaign(body: CampaignWrite, user: StaffUser, db: DB):
     scoped(db, Segment, body.segment_id, user.mall_id)
     rule = scoped(db, RecommendationRule, body.recommendation_rule_id, user.mall_id)
     if rule.segment_id != body.segment_id:
@@ -456,30 +480,30 @@ def create_campaign(body: CampaignWrite, user: CurrentUser, db: DB):
 
 
 @app.get('/api/v1/campaigns/{campaign_id}')
-def get_campaign(campaign_id: UUID, user: CurrentUser, db: DB):
+def get_campaign(campaign_id: UUID, user: StaffUser, db: DB):
     return campaign_public(scoped(db, Campaign, campaign_id, user.mall_id))
 
 
 @app.get('/api/v1/campaigns/{campaign_id}/preview')
-def campaign_preview(campaign_id: UUID, user: CurrentUser, db: DB):
+def campaign_preview(campaign_id: UUID, user: StaffUser, db: DB):
     return preview(db, scoped(db, Campaign, campaign_id, user.mall_id))[0]
 
 
 @app.get('/api/v1/campaigns/{campaign_id}/exports')
-def campaign_exports(campaign_id: UUID, user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+def campaign_exports(campaign_id: UUID, user: StaffUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     scoped(db, Campaign, campaign_id, user.mall_id)
     return paginate(db, select(Export).where(Export.campaign_id == campaign_id).order_by(Export.created_at.desc()), limit, offset, export_public)
 
 
 @app.post('/api/v1/campaigns/{campaign_id}/exports', status_code=201)
-def campaign_export(campaign_id: UUID, user: CurrentUser, response: Response, idempotency_key: Annotated[UUID, Header()], db: DB):
+def campaign_export(campaign_id: UUID, user: StaffUser, response: Response, idempotency_key: Annotated[UUID, Header()], db: DB):
     result, created = create_export(campaign_id, user.mall_id, idempotency_key)
     response.status_code = 201 if created else 200
     return result
 
 
 @app.get('/api/v1/exports/{export_id}/download')
-def download(export_id: UUID, user: CurrentUser, db: DB):
+def download(export_id: UUID, user: StaffUser, db: DB):
     row = db.get(Export, export_id)
     if not row:
         raise AppError('not_found', 'Выгрузка не найдена', 404)
@@ -489,7 +513,7 @@ def download(export_id: UUID, user: CurrentUser, db: DB):
 
 # Protected convenience endpoint for reproducible hackathon imports; not a production connector.
 @app.get('/api/v1/demo/files/{name}')
-def demo_file(name: str, user: CurrentUser):
+def demo_file(name: str, user: StaffUser):
     allowed = {'pos_B.xlsx', 'crm_C_initial.csv', 'crm_C_after.csv', 'crm_C_conflict.csv'}
     if name not in allowed:
         raise AppError('not_found', 'Демонстрационный файл не найден', 404)
@@ -509,22 +533,84 @@ RadarQuery = Annotated[RadarOptions, Depends(radar_options)]
 
 
 @app.get('/api/v1/radar', response_model=RadarReport)
-def radar_report(user: CurrentUser, options: RadarQuery):
+def radar_report(user: StaffUser, options: RadarQuery):
     return radar_service.snapshot(user.mall_id, options)
 
 
 @app.get('/api/v1/radar/opportunities/{opportunity_id}', response_model=RadarAudience)
-def radar_audience(opportunity_id: UUID, user: CurrentUser, options: RadarQuery, limit: Limit = 20, offset: Offset = 0):
+def radar_audience(opportunity_id: UUID, user: StaffUser, options: RadarQuery, limit: Limit = 20, offset: Offset = 0):
     return radar_service.snapshot(user.mall_id, options, opportunity_id, limit, offset)
 
 
 @app.post('/api/v1/radar/campaigns', status_code=201, response_model=RadarCampaignResult)
-def radar_campaign(body: RadarCampaignWrite, user: CurrentUser, response: Response):
+def radar_campaign(body: RadarCampaignWrite, user: StaffUser, response: Response):
     result = radar_service.launch(user.mall_id, body)
     response.status_code = 201 if result['created'] else 200
     return result
 
 
 @app.post('/api/v1/demo/radar', status_code=202, response_model=RadarDemoResult)
-def radar_demo(body: RadarDemoWrite, user: CurrentUser, db: DB):
+def radar_demo(body: RadarDemoWrite, user: StaffUser, db: DB):
     return enqueue_radar_demo(db, user.mall_id, body.stage)
+
+
+@app.get('/api/v1/brand/context', response_model=BrandContext)
+def brand_context(user: BrandUser, db: DB):
+    return brand_service.context(db, user)[1]
+
+
+async def mapped_brand_file(user, db, file, mapping):
+    source, info = brand_service.context(db, user)
+    content = await file.read(MAX_BYTES + 1)
+    if len(content) > MAX_BYTES:
+        raise AppError('file_too_large', 'Максимальный размер файла — 10 MiB', 413)
+    try:
+        selected = ColumnMapping.model_validate_json(mapping) if mapping is not None else None
+    except ValidationError as exc:
+        raise AppError('invalid_mapping', 'Выберите отдельные колонки для времени и хотя бы одного контакта') from exc
+    table, sheet_name, encoding = await run_in_threadpool(brand_service.read_table, file.filename, content)
+    report, records = await run_in_threadpool(brand_service.preview, table, info['timezone'], selected, sheet_name, encoding)
+    return source, report, records
+
+
+@app.post('/api/v1/brand/imports/preview', response_model=FilePreview)
+async def brand_preview(user: BrandUser, db: DB, file: UploadFile = File(...), mapping: str | None = Form(None)):
+    _, report, _ = await mapped_brand_file(user, db, file, mapping)
+    return report
+
+
+@app.post('/api/v1/brand/imports', status_code=202)
+async def brand_upload(user: BrandUser, db: DB, file: UploadFile = File(...), mapping: str = Form(...)):
+    source, report, records = await mapped_brand_file(user, db, file, mapping)
+    if not report['valid_rows']:
+        raise AppError('no_valid_rows', 'Нет корректных записей. Проверьте сопоставление колонок и значения в таблице.')
+    identifier = uuid4()
+    directory = settings.path('upload_dir')
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f'{identifier}.csv'
+    path.write_bytes(brand_service.canonical_csv(records))
+    try:
+        job = ImportJob(id=identifier, source_id=source.id, file_path=str(path))
+        db.add(job)
+        db.commit()
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    return dump(job, JOB_FIELDS)
+
+
+@app.get('/api/v1/brand/imports')
+def brand_imports(user: BrandUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+    source, _ = brand_service.context(db, user)
+    return paginate(db, select(ImportJob).where(ImportJob.source_id == source.id)
+        .order_by(ImportJob.created_at.desc(), ImportJob.id.desc()), limit, offset, lambda job: dump(job, JOB_FIELDS))
+
+
+@app.get('/api/v1/brand/imports/{job_id}/errors')
+def brand_errors(job_id: UUID, user: BrandUser, db: DB, limit: Limit = 20, offset: Offset = 0):
+    source, _ = brand_service.context(db, user)
+    if not db.scalar(select(ImportJob.id).where(ImportJob.id == job_id, ImportJob.source_id == source.id)):
+        raise AppError('not_found', 'Загрузка не найдена', 404)
+    return paginate(db, select(ImportRowResult).where(ImportRowResult.job_id == job_id, ImportRowResult.status == 'rejected')
+        .order_by(ImportRowResult.row_number), limit, offset,
+        lambda row: dict(row_number=row.row_number, code=row.error_code, message=row.error_message))
