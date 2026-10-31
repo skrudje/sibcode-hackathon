@@ -1,10 +1,11 @@
 import { useEffect, useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, ArrowUpRight, Check, CircleAlert, FlaskConical, LoaderCircle, Radar as RadarIcon, Send, ShieldCheck, Users } from "lucide-react";
-import { api, type Schema, eventNames, number, waitImport, when } from "../api";
+import { ArrowRight, ArrowUpRight, CircleAlert, LoaderCircle, Radar as RadarIcon, Send, ShieldCheck, Users } from "lucide-react";
+import { api, type Schema, eventNames, number, when } from "../api";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
+import { HelpTip } from "./ui/help-tip";
 import "../radar.css";
 
 type Opportunity = Schema<"RadarOpportunity">;
@@ -20,12 +21,10 @@ function ErrorNotice({ error }: { error: unknown }) {
 }
 
 export function VisitRadar() {
-  const client = useQueryClient();
   const [options, setOptions] = useState(defaults);
   const [selected, setSelected] = useState("");
   const [offset, setOffset] = useState(0);
   const [launching, setLaunching] = useState(false);
-  const [demoStage, setDemoStage] = useState<"initial" | "followup">("initial");
   const query = queryString(options);
   const report = useQuery({ queryKey: ["radar", options], queryFn: () => api<Schema<"RadarReport">>(`/radar?${query}`), refetchInterval: 10_000 });
   const items = report.data?.opportunities ?? [];
@@ -36,43 +35,31 @@ export function VisitRadar() {
   useEffect(() => { setOffset(0); setLaunching(false); }, [chosen?.id]);
   const audience = useQuery({ queryKey: ["radar-audience", chosen?.id, options, offset], enabled: !!chosen,
     queryFn: () => api<Schema<"RadarAudience">>(`/radar/opportunities/${chosen!.id}?${query}&limit=10&offset=${offset}`), refetchInterval: 10_000 });
-  const demo = useMutation({
-    mutationFn: async (stage: "initial" | "followup") => {
-      setDemoStage(stage);
-      const result = await api<Schema<"RadarDemoResult">>("/demo/radar", { method: "POST", body: JSON.stringify({ stage }) });
-      for (const id of result.job_ids) await waitImport(id);
-    },
-    onSuccess: () => { setOffset(0); void client.invalidateQueries(); },
-  });
   const incomplete = report.data?.nodes.filter(node => node.coverage_status !== "ready") ?? [];
   function choose(id: string) { setSelected(id); setOffset(0); }
   return (
     <>
       <div className="page-heading">
         <div><h1>Радар новых визитов</h1><p>Наблюдаемые связи арендаторов → проверенная аудитория → кампания</p></div>
-        <div className="heading-actions"><Button variant="outline" disabled={demo.isPending} onClick={() => demo.mutate("initial")}>
-          {demo.isPending && demoStage === "initial" ? <LoaderCircle size={15} className="spin" /> : <FlaskConical size={15} />} Загрузить пример радара
-        </Button></div>
+
       </div>
       <div className="radar-toolbar">
-        <label>Окно истории<select value={options.lookback_days} onChange={event => { setOptions({ ...options, lookback_days: Number(event.target.value) }); setOffset(0); }}>
+        <label><span>Окно истории <HelpTip term="Окно истории" text="Сколько дней до общего среза учитывать при сравнении клиентов. Полнота истории всех участвующих источников должна покрывать этот период." /></span><select aria-label="Окно истории" value={options.lookback_days} onChange={event => { setOptions({ ...options, lookback_days: Number(event.target.value) }); setOffset(0); }}>
           <option value={30}>30 дней</option><option value={90}>90 дней</option><option value={180}>180 дней</option>
         </select></label>
-        <label>Общих клиентов, минимум<select value={options.min_shared_customers} onChange={event => { setOptions({ ...options, min_shared_customers: Number(event.target.value) }); setOffset(0); }}>
+        <label><span>Общих клиентов, минимум <HelpTip term="Общие клиенты" /></span><select aria-label="Общих клиентов, минимум" value={options.min_shared_customers} onChange={event => { setOptions({ ...options, min_shared_customers: Number(event.target.value) }); setOffset(0); }}>
           <option value={3}>3 клиента</option><option value={5}>5 клиентов</option><option value={10}>10 клиентов</option><option value={25}>25 клиентов</option>
         </select></label>
-        <label>Отношение частот, минимум<select value={options.min_lift} onChange={event => { setOptions({ ...options, min_lift: Number(event.target.value) }); setOffset(0); }}>
+        <label><span>Отношение частот, минимум <HelpTip term="Отношение частот" /></span><select aria-label="Отношение частот, минимум" value={options.min_lift} onChange={event => { setOptions({ ...options, min_lift: Number(event.target.value) }); setOffset(0); }}>
           <option value={1.1}>1,1×</option><option value={1.5}>1,5×</option><option value={2}>2×</option>
         </select></label>
         <span className="radar-updated">{report.isFetching ? <><LoaderCircle size={12} className="spin" /> Пересчёт…</> : <>Обновлено: {when(report.data?.evaluated_at)}</>}</span>
       </div>
-      <ErrorNotice error={report.error ?? demo.error} />
-      {demo.isPending && <div className="notice" role="status"><LoaderCircle size={16} className="spin" />Синтетический пример обрабатывается в журнале импорта…</div>}
-      {demo.isSuccess && <div className="notice" role="status"><Check size={16} />{demoStage === "initial" ? "Пример загружен через JSON, XLSX и CSV. Повторная загрузка не дублирует события." : "Покупка R026 загружена. Аудитории пересчитаны по новым фактам."}</div>}
+      <ErrorNotice error={report.error} />
       <div className="radar-summary">
         <span><strong>{number(report.data?.total_opportunity_count ?? 0)}</strong> возможностей</span>
-        <span><strong>{number(report.data?.verified_customer_count ?? 0)}</strong> подтверждённых профилей</span>
-        <span><strong>{number(report.data?.unknown_customer_count ?? 0)}</strong> без общего ключа · вне расчёта</span>
+        <span><strong>{number(report.data?.verified_customer_count ?? 0)}</strong> профилей с контактами</span>
+        <span><strong>{number(report.data?.unknown_customer_count ?? 0)}</strong> без контактов · вне расчёта</span>
       </div>
       {incomplete.length > 0 && <div className="notice"><ShieldCheck size={16} /><span>Возможности требуют полной истории за выбранное окно. {incomplete.map(node => `${node.name}: ${coverageNames[node.coverage_status].toLowerCase()}`).join("; ")}. <Link className="text-link" to="/sources">Проверить источники <ArrowRight size={12} /></Link></span></div>}
       <div className="radar-workspace">
@@ -85,28 +72,28 @@ export function VisitRadar() {
           <section className="panel">
             <div className="panel-heading"><div><h2>Возможности для приглашения</h2><p>По убыванию отношения частот · максимум 100 результатов</p></div><span className="badge badge-gray">{items.length}</span></div>
             {items.length ? <div className="radar-opportunities">{items.map(item => <button key={item.id} className={`radar-opportunity${chosen?.id === item.id ? " selected" : ""}`} aria-label={label(item)} aria-pressed={chosen?.id === item.id} onClick={() => choose(item.id)}>
-              <span className="radar-opportunity-icon"><ArrowUpRight size={17} /></span><span className="radar-opportunity-name"><strong>{label(item)}</strong><small>{item.shared_count} из {item.cohort_count} уже покупали · {item.offers.length ? "Есть действующее предложение" : "Нужно предложение"}</small></span><span className="radar-opportunity-numbers"><strong>{decimal(item.lift)}×</strong><small>{item.candidate_count} в аудитории</small></span>
-            </button>)}</div> : <div className="empty"><div className="empty-icon"><RadarIcon size={23} /></div><h3>Пока нет подтверждённых возможностей</h3><p>{report.data?.empty_reason === "no_data" ? "Загрузите данные арендаторов или синтетический пример радара." : report.data?.empty_reason === "insufficient_history" ? "Для сравнения требуется полная история участвующих источников за общее окно." : "С текущими порогами нет связей с достаточным числом общих клиентов и новой аудиторией."}</p></div>}
+              <span className="radar-opportunity-icon"><ArrowUpRight size={17} /></span><span className="radar-opportunity-name"><strong>{label(item)}</strong><small>{item.shared_count} из {item.cohort_count} уже взаимодействовали · {item.offers.length ? "Есть действующее предложение" : "Нужно предложение"}</small></span><span className="radar-opportunity-numbers"><strong>{decimal(item.lift)}×</strong><small>{item.candidate_count} в аудитории</small></span>
+            </button>)}</div> : <div className="empty"><div className="empty-icon"><RadarIcon size={23} /></div><h3>Пока нет подтверждённых возможностей</h3><p>{report.data?.empty_reason === "no_data" ? "Настройте API арендаторов или загрузите CSV / Excel в источниках." : report.data?.empty_reason === "insufficient_history" ? "Для сравнения требуется полная история участвующих источников за общее окно." : "С текущими порогами нет связей с достаточным числом общих клиентов и новой аудиторией."}</p></div>}
           </section>
-          <div className="radar-demo-action"><FlaskConical size={16} /><span><strong>Проверка на новых данных</strong><small>Синтетическая покупка R026 в книжном C исключит его из аудитории.</small></span><Button size="sm" variant="outline" disabled={demo.isPending || !chosen} onClick={() => demo.mutate("followup")}>Добавить покупку R026</Button></div>
+
         </div>
         <aside className="panel radar-inspector" aria-label="Проверка возможности">
           {chosen ? <>
             <div className="panel-heading"><div><span className="radar-kicker">ВОЗМОЖНОСТЬ ДЛЯ ПРИГЛАШЕНИЯ</span><h2>{chosen.destination.name}</h2><p>Из: {chosen.origins.map(node => node.name).join(" + ")}</p></div></div>
             <div className="radar-inspector-body">
-              <div className="radar-result"><div><strong>{chosen.candidate_count}</strong><span>клиентов в аудитории</span></div><Users size={25} /></div>
+              <div className="radar-result"><div><strong>{chosen.candidate_count}</strong><span>клиентов в аудитории <HelpTip term="Новая аудитория" /></span></div><Users size={25} /></div>
               <div className="radar-comparison"><div><span>В выбранной группе</span><strong>{percent(chosen.conditional_rate)}</strong><small>{chosen.shared_count} из {chosen.cohort_count}</small></div><div><span>В общей активной базе</span><strong>{percent(chosen.baseline_rate)}</strong><small>{chosen.destination_count} из {chosen.population_count}</small></div></div>
               <div className="radar-lift"><strong>{decimal(chosen.lift)}×</strong><span>отношение наблюдаемых частот. Связь требует проверки в кампании; это не вероятность покупки.</span></div>
-              <details className="radar-explanation"><summary>Как получен результат</summary><p>{chosen.explanation}</p><p>Единица расчёта — уникальный клиент. Повторные покупки не увеличивают число общих клиентов.</p></details>
-              <div className="radar-coverage"><ShieldCheck size={16} /><div><strong>Полнота истории подтверждена источниками</strong><small>{when(chosen.window_start)} — {when(chosen.as_of)} · КРСК</small><small>У кандидатов нет зарегистрированной покупки в {chosen.destination.name} за это окно.</small></div></div>
+              <details className="radar-explanation"><summary>Как получен результат</summary><p>{chosen.explanation}</p><p>Единица расчёта — уникальный клиент. Повторные взаимодействия не увеличивают число общих клиентов.</p></details>
+              <div className="radar-coverage"><ShieldCheck size={16} /><div><strong>Полнота истории заявлена источниками <HelpTip term="Полнота истории" /></strong><small>{when(chosen.window_start)} — {when(chosen.as_of)} · КРСК</small><small>У кандидатов нет зарегистрированного взаимодействия в {chosen.destination.name} за это окно.</small></div></div>
               <div className="radar-audience-heading"><h3>Проверить клиентов</h3><span>{audience.data?.total ?? "—"}</span></div>
               <ErrorNotice error={audience.error} />
               {audience.isPending ? <div className="loading"><LoaderCircle size={17} className="spin" /> Проверяем события…</div> : <div className="radar-customers">{audience.data?.items.map(customer => <details key={customer.id}><summary><span><strong>{customer.display_name ?? "Без имени"}</strong><code>{customer.global_customer_key ?? "Без ключа"}</code></span><span className="radar-evidence-count">{customer.observed_events.length} события</span></summary><div className="radar-customer-evidence">{customer.observed_events.map(event => <p key={event.event_id}><span>{chosen.origins.find(n => n.tenant_id === event.tenant_id)?.name} · {eventNames[event.event_type]}</span><small>{when(event.occurred_at)}</small></p>)}<Link className="text-link" to={`/customers/${customer.id}`}>Открыть профиль <ArrowUpRight size={12} /></Link></div></details>)}</div>}
               {audience.data && audience.data.total > 10 && <div className="pagination radar-pagination"><span>{offset+1}–{Math.min(offset+10, audience.data.total)} из {audience.data.total}</span><div><Button size="sm" variant="outline" disabled={!offset} onClick={() => setOffset(offset-10)}>Назад</Button><Button size="sm" variant="outline" disabled={offset+10 >= audience.data.total} onClick={() => setOffset(offset+10)}>Далее</Button></div></div>}
-              {!!audience.data?.shared_examples.length && <details className="radar-explanation"><summary>События, подтверждающие связь</summary><p>Примеры клиентов из {chosen.shared_count} с событиями в исходных местах и покупкой у целевого арендатора:</p>{audience.data.shared_examples.map(c => <div key={c.id} className="radar-shared-example"><Link to={`/customers/${c.id}`}>{c.global_customer_key} <ArrowUpRight size={11} /></Link>{c.observed_events.map(e => <small key={e.event_id}>{[...chosen.origins, chosen.destination].find(n => n.tenant_id === e.tenant_id)?.name}: {eventNames[e.event_type]} · {when(e.occurred_at)}</small>)}</div>)}</details>}
+              {!!audience.data?.shared_examples.length && <details className="radar-explanation"><summary>События, подтверждающие связь</summary><p>Примеры клиентов из {chosen.shared_count} с событиями в исходных местах и взаимодействием с целевым арендатором:</p>{audience.data.shared_examples.map(c => <div key={c.id} className="radar-shared-example"><Link to={`/customers/${c.id}`}>{c.global_customer_key} <ArrowUpRight size={11} /></Link>{c.observed_events.map(e => <small key={e.event_id}>{[...chosen.origins, chosen.destination].find(n => n.tenant_id === e.tenant_id)?.name}: {eventNames[e.event_type]} · {when(e.occurred_at)}</small>)}</div>)}</details>}
               {chosen.offers.length ? <div className="radar-offer"><span className="badge badge-green">Действующее предложение</span><strong>{chosen.offers[0].title}</strong><p>{chosen.offers[0].description}</p><small>До {when(chosen.offers[0].valid_until)}</small></div> : <div className="notice"><CircleAlert size={16} /><span>Для кампании нужно действующее предложение арендатора. <Link className="text-link" to="/recommendations">Открыть рекомендации</Link></span></div>}
             </div>
-            <div className="radar-inspector-actions"><Button className="full" disabled={!chosen.offers.length || !audience.data || !!audience.error || demo.isPending} onClick={() => setLaunching(true)}><Send size={15} /> Создать кампанию из возможности</Button><p className="radar-disclaimer">Перед CSV-выгрузкой контакты проверяются на конфликты, повторы и ограничения частоты.</p></div>
+            <div className="radar-inspector-actions"><Button className="full" disabled={!chosen.offers.length || !audience.data || !!audience.error} onClick={() => setLaunching(true)}><Send size={15} /> Создать кампанию из возможности</Button><p className="radar-disclaimer">Перед CSV-выгрузкой контакты проверяются на конфликты, повторы и ограничения частоты.</p></div>
           </> : <div className="empty"><div className="empty-icon"><Users size={22} /></div><h3>Выберите возможность</h3><p>Здесь появятся аудитория, события и действующее предложение арендатора.</p></div>}
         </aside>
       </div>
@@ -119,18 +106,18 @@ function RadarMap({ nodes, items, chosen, onChoose }: { nodes: Schema<"RadarNode
   const markerId = useId().replace(/:/g, "");
   const positions = nodes.map((node, index) => {
     const angle = -Math.PI / 2 + index * 2 * Math.PI / Math.max(nodes.length, 1);
-    return { ...node, x: 350 + (nodes.length === 1 ? 0 : 215 * Math.cos(angle)), y: 175 + (nodes.length === 1 ? 0 : 105 * Math.sin(angle)) };
+    return { ...node, x: 450 + (nodes.length === 1 ? 0 : 320 * Math.cos(angle)), y: 270 + (nodes.length === 1 ? 0 : 200 * Math.sin(angle)) };
   });
   const edges = new Map<string, { from: typeof positions[number]; to: typeof positions[number]; item: Opportunity; selected: boolean }>();
-  for (const item of items) for (const origin of item.origins) {
+  for (const item of (chosen ? [chosen] : items.slice(0,3))) for (const origin of item.origins) {
     const from = positions.find(n => n.tenant_id === origin.tenant_id), to = positions.find(n => n.tenant_id === item.destination.tenant_id);
     const key = `${origin.tenant_id}:${item.destination.tenant_id}`;
     if (from && to && (!edges.has(key) || item.id === chosen?.id)) edges.set(key, { from, to, item, selected: item.id === chosen?.id });
   }
-  return <svg viewBox="0 0 700 350" className="radar-map" role="group" aria-label="Связи арендаторов">
+  return <svg viewBox="0 0 900 540" className="radar-map" role="group" aria-label="Связи арендаторов">
     <defs><marker id={`${markerId}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a9bcb3" /></marker><marker id={`${markerId}-active`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#218764" /></marker></defs>
-    <circle cx="350" cy="175" r="130" fill="none" stroke="#e8eeeb" strokeDasharray="3 7" />
-    <circle cx="350" cy="175" r="68" fill="none" stroke="#eef2f0" />
+    <circle cx="450" cy="270" r="130" fill="none" stroke="#e8eeeb" strokeDasharray="3 7" />
+    <circle cx="450" cy="270" r="68" fill="none" stroke="#eef2f0" />
     {[...edges.values()].sort((a,b) => Number(a.selected)-Number(b.selected)).map(({from,to,item,selected}) => {
       const dx=to.x-from.x,dy=to.y-from.y,distance=Math.hypot(dx,dy), ux=dx/distance,uy=dy/distance;
       const x1=from.x+ux*64,y1=from.y+uy*31,x2=to.x-ux*72,y2=to.y-uy*36;
@@ -151,10 +138,10 @@ function LaunchCampaign({ opportunity, options, onClose }: { opportunity: Opport
   const launch = useMutation({ mutationFn: () => api<Schema<"RadarCampaignResult">>("/radar/campaigns", { method: "POST", body: JSON.stringify({ ...options, opportunity_id: opportunity.id, offer_rule_id: offer, channel, name, idempotency_key: key }) }),
     onSuccess: async result => { await client.invalidateQueries(); onClose(); navigate(`/campaigns?campaign=${result.campaign_id}`); } });
   return <Dialog title="Кампания из возможности" onClose={() => { if(!launch.isPending) onClose(); }}><form className="dialog-body" onSubmit={event => { event.preventDefault(); launch.mutate(); }}>
-    <div className="notice"><ShieldCheck size={16} /><span>При сохранении сервер заново проверит связь, полноту истории и предложение. Созданный сегмент будет пересчитываться при новых покупках.</span></div>
+    <div className="notice"><ShieldCheck size={16} /><span>При сохранении сервер заново проверит связь, полноту истории и предложение. Созданный сегмент будет пересчитываться при новых взаимодействиях.</span></div>
     <label>Название кампании<input required maxLength={120} value={name} onChange={event => { setName(event.target.value); setKey(crypto.randomUUID()); }} /></label>
     <label>Предложение арендатора<select value={offer} onChange={event => { setOffer(event.target.value); setKey(crypto.randomUUID()); }}>{opportunity.offers.map(item => <option key={item.rule_id} value={item.rule_id}>{item.title}</option>)}</select></label>
-    <label>Канал выгрузки<select value={channel} onChange={event => { setChannel(event.target.value); setKey(crypto.randomUUID()); }}><option value="email">Email</option><option value="sms">SMS</option><option value="push">Push</option></select></label>
+    <label>Канал выгрузки<select value={channel} onChange={event => { setChannel(event.target.value); setKey(crypto.randomUUID()); }}><option value="email">Email</option><option value="sms">SMS</option></select></label>
     <p>В аудитории сейчас {opportunity.candidate_count} клиентов. Число доступных контактов будет показано в предпросмотре кампании. Сообщения не отправляются.</p>
     <ErrorNotice error={launch.error} />
     <div className="form-actions"><Button type="button" variant="outline" disabled={launch.isPending} onClick={onClose}>Отмена</Button><Button disabled={launch.isPending || !name.trim() || !offer}>{launch.isPending ? <LoaderCircle size={15} className="spin" /> : <Send size={15} />} Создать и проверить контакты</Button></div>

@@ -62,13 +62,20 @@ def seed():
         manifest = generate_files(reference)
         if not db.scalar(select(User).where(User.email == settings.demo_email.lower())):
             db.add(User(mall_id=mall.id, email=settings.demo_email.lower(), password_hash=PasswordHash.recommended().hash(settings.demo_password)))
-        for source_info, category in zip(manifest['sources'], ['Досуг', 'Еда и напитки', 'Книги']):
+        if not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
+            db.add(User(mall_id=mall.id, email=settings.admin_email.lower(), role='admin', password_hash=PasswordHash.recommended().hash(settings.admin_password)))
+        from app.workspace_seed import CATALOG
+        for source_info, (name, category) in zip(manifest['sources'], CATALOG):
             tid, sid = UUID(source_info['tenant_id']), UUID(source_info['id'])
             if not db.get(Tenant, tid):
-                db.add(Tenant(id=tid, mall_id=mall.id, code=source_info['tenant_code'], name=source_info['tenant_name'], category=category))
+                db.add(Tenant(id=tid, mall_id=mall.id, code=source_info['tenant_code'], name=name, category=category))
                 db.flush()
+            else:
+                db.get(Tenant, tid).name = name
             if not db.get(Source, sid):
-                db.add(Source(id=sid, mall_id=mall.id, tenant_id=tid, name={'A':'API кинотеатра', 'B':'Касса кафе', 'C':'CRM книжного'}[source_info['tenant_code']], kind=source_info['kind'], covered_event_types=source_info['covered_event_types'], coverage_from=reference - timedelta(days=120), coverage_to=reference, config={'url': settings.mock_source_url} if source_info['kind'] == 'rest_api' else {}))
+                db.add(Source(id=sid, mall_id=mall.id, tenant_id=tid, name=name, kind=source_info['kind'], covered_event_types=source_info['covered_event_types'], coverage_from=reference - timedelta(days=120), coverage_to=reference, config={'url': settings.mock_source_url} if source_info['kind'] == 'rest_api' else {}))
+            else:
+                db.get(Source, sid).name = name
         if not db.get(Segment, ids['segment']):
             db.add(Segment(id=ids['segment'], mall_id=mall.id, name=manifest['segment']['name'], definition=manifest['segment']['definition']))
             db.flush()
@@ -87,6 +94,9 @@ def seed():
         if not db.get(ContactChannelState, key):
             db.add(ContactChannelState(mall_id=mall.id, channel='email', contact_normalized=key[2], last_exported_at=reference - timedelta(days=1)))
     settings.path('upload_dir').mkdir(parents=True, exist_ok=True)
+    if settings.seed_workspace_data:
+        from app.workspace_seed import prepare
+        prepare()
     print('Demo catalog and files are ready. Customer events are loaded through imports.')
 
 

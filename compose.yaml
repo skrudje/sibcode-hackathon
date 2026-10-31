@@ -9,6 +9,7 @@ x-backend: &backend
     DEMO_DIR: /app/.data/demo
     MOCK_SOURCE_URL: http://mock-source:8011/events
     ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5180,http://127.0.0.1:5180}
+    SEED_WORKSPACE_DATA: '${SEED_WORKSPACE_DATA:-false}'
   volumes: [uploads:/app/.data/uploads, demo:/app/.data/demo]
   init: true
 services:

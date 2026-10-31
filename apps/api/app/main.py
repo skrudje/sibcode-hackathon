@@ -17,7 +17,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.contracts import CampaignWrite, LoginRequest, RecommendationRuleWrite, SegmentWrite
 from app.core.config import ROOT, Clock, settings
 from app.core.contacts import normalize_contact
-from app.core.db import SessionLocal, dump, json_value
+from app.core.db import SessionLocal, dump, json_value, lock
 from app.core.errors import AppError
 from app.models import AuthSession, Campaign, Customer, CustomerContact, Event, Export, ExternalIdentity, ImportJob, ImportRowResult, RecommendationRule, Segment, Source, Tenant, User
 from app.modules.exports.service import create_export, export_public, preview
@@ -28,6 +28,9 @@ from app.modules.sources.service import update_coverage
 from app.modules.radar import service as radar_service
 from app.modules.radar.contracts import RadarAudience, RadarCampaignResult, RadarCampaignWrite, RadarDemoResult, RadarDemoWrite, RadarOptions, RadarReport
 from app.modules.radar.demo import enqueue as enqueue_radar_demo
+from app.modules.integrations import service as integrations
+from app.modules.integrations.contracts import (ConnectionTest, IntegrationInfo, IntegrationPage, IntegrationWrite,
+    TeamMember, TeamPage, TenantInfo, TenantWrite, UserPatch, UserWrite)
 
 app = FastAPI(title='Хрюкерсы CDP', version='0.1.0')
 log = logging.getLogger('hryukers')
@@ -86,6 +89,15 @@ def current_user(request: Request, db: DB):
 
 
 CurrentUser = Annotated[User, Depends(current_user)]
+
+
+def admin_user(user: CurrentUser):
+    if user.role != 'admin':
+        raise AppError('admin_required', 'Это действие доступно администратору', 403)
+    return user
+
+
+AdminUser = Annotated[User, Depends(admin_user)]
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0)]
 USER_FIELDS = ['id', 'email', 'role', 'mall_id']
@@ -172,7 +184,7 @@ def sources(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
 
 
 @app.patch('/api/v1/sources/{source_id}/coverage')
-def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: CurrentUser, db: DB):
+def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: AdminUser, db: DB):
     source = update_coverage(db, source_id, user.mall_id, body)
     db.commit()
     return dump(source, SOURCE_FIELDS)
@@ -181,8 +193,9 @@ def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: CurrentUse
 @app.post('/api/v1/sources/{source_id}/imports', status_code=202)
 async def upload(source_id: UUID, user: CurrentUser, db: DB, file: UploadFile = File(...)):
     source = scoped(db, Source, source_id, user.mall_id)
-    extension = '.csv' if source.kind == 'crm_csv' else '.xlsx'
-    if source.kind == 'rest_api' or not (file.filename or '').lower().endswith(extension):
+    extension = '.' + (file.filename or '').lower().rsplit('.', 1)[-1]
+    allowed = {'.csv', '.xlsx'} if source.kind == 'contacts' else {'.csv'} if source.kind == 'crm_csv' else {'.xlsx'} if source.kind == 'pos_xlsx' else set()
+    if extension not in allowed:
         raise AppError('unsupported_file', 'Формат файла не соответствует источнику', 415)
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
@@ -204,13 +217,93 @@ async def upload(source_id: UUID, user: CurrentUser, db: DB, file: UploadFile = 
 
 @app.post('/api/v1/sources/{source_id}/sync', status_code=202)
 def sync_source(source_id: UUID, user: CurrentUser, db: DB):
-    source = scoped(db, Source, source_id, user.mall_id)
-    if source.kind != 'rest_api':
+    source = db.scalar(select(Source).where(Source.id == source_id, Source.mall_id == user.mall_id).with_for_update())
+    if not source:
+        raise AppError('not_found', 'Источник не найден', 404)
+    if source.kind not in ('rest_api', 'contacts'):
         raise AppError('invalid_source_type', 'Для этого источника требуется файл')
-    job = ImportJob(source_id=source.id)
-    db.add(job)
+    job = integrations.enqueue_sync(db, source)
     db.commit()
     return dump(job, JOB_FIELDS)
+
+
+@app.get('/api/v1/integrations', response_model=IntegrationPage)
+def integration_list(user: CurrentUser, db: DB):
+    rows = db.execute(select(Source, Tenant).join(Tenant, Source.tenant_id == Tenant.id)
+                      .where(Source.mall_id == user.mall_id, Tenant.mall_id == user.mall_id).order_by(Tenant.name)).all()
+    return {'items': [integrations.connection_public(source, tenant, user.role == 'admin') for source, tenant in rows], 'total': len(rows)}
+
+
+@app.patch('/api/v1/integrations/{source_id}', response_model=IntegrationInfo)
+def integration_update(source_id: UUID, body: IntegrationWrite, user: AdminUser, db: DB):
+    source = db.scalar(select(Source).where(Source.id == source_id, Source.mall_id == user.mall_id).with_for_update())
+    if not source:
+        raise AppError('not_found', 'Подключение не найдено', 404)
+    integrations.save_config(db, source, body)
+    db.commit()
+    return integrations.connection_public(source, db.get(Tenant, source.tenant_id), True)
+
+
+@app.post('/api/v1/integrations/{source_id}/test', response_model=ConnectionTest)
+def integration_test(source_id: UUID, user: AdminUser, db: DB):
+    source = scoped(db, Source, source_id, user.mall_id)
+    page = integrations.read_page(integrations.config(source), integrations.config(source).get('cursor'))
+    # Test checks the format too, but never writes events or advances the cursor.
+    from app.modules.integrations.contracts import ContactRecord
+    from pydantic import ValidationError
+    try:
+        for row in page['records']:
+            ContactRecord.model_validate(row)
+    except ValidationError as exc:
+        raise AppError('invalid_contact_record', 'API доступен, но записи должны содержать только phone, email и time с корректным контактом и часовым поясом.') from exc
+    return dict(status='ok', record_count=len(page['records']), message='Подключение и формат проверены. Записи не загружались.')
+
+
+@app.get('/api/v1/integrations/template')
+def contact_template(user: CurrentUser):
+    return Response('phone,email,time\n,visitor@example.invalid,2026-10-30T12:00:00+07:00\n'.encode('utf-8-sig'),
+                    media_type='text/csv', headers={'Content-Disposition': 'attachment; filename="contacts.csv"'})
+
+
+@app.post('/api/v1/tenants', response_model=TenantInfo, status_code=201)
+def create_tenant(body: TenantWrite, user: AdminUser, db: DB):
+    tenant = Tenant(mall_id=user.mall_id, code=uuid4().hex[:8], name=body.name, category=body.category)
+    db.add(tenant)
+    db.flush()
+    db.add(Source(mall_id=user.mall_id, tenant_id=tenant.id, name=body.name, kind='contacts',
+                  covered_event_types=['interaction'], config={'enabled': False, 'interval_minutes': 15}))
+    db.commit()
+    return dump(tenant, ['id', 'code', 'name', 'category', 'is_active'])
+
+
+@app.get('/api/v1/team', response_model=TeamPage)
+def team_list(user: AdminUser, db: DB):
+    members = db.scalars(select(User).where(User.mall_id == user.mall_id).order_by(User.email)).all()
+    return {'items': [dump(member, ['id', 'email', 'role', 'is_active']) for member in members], 'total': len(members)}
+
+
+@app.post('/api/v1/team', response_model=TeamMember, status_code=201)
+def team_create(body: UserWrite, user: AdminUser, db: DB):
+    if db.scalar(select(User.id).where(User.email == body.email)):
+        raise AppError('email_unavailable', 'Этот email уже используется', 409)
+    member = User(mall_id=user.mall_id, email=body.email, password_hash=PasswordHash.recommended().hash(body.password), role=body.role)
+    db.add(member)
+    db.commit()
+    return dump(member, ['id', 'email', 'role', 'is_active'])
+
+
+@app.patch('/api/v1/team/{user_id}', response_model=TeamMember)
+def team_update(user_id: UUID, body: UserPatch, user: AdminUser, db: DB):
+    lock(db, f'team:{user.mall_id}')
+    db.refresh(user)
+    if user.role != 'admin' or not user.is_active:
+        raise AppError('admin_required', 'Это действие доступно администратору', 403)
+    if user_id == user.id:
+        raise AppError('self_change_not_allowed', 'Собственную роль и доступ здесь изменить нельзя', 409)
+    member = scoped(db, User, user_id, user.mall_id)
+    member.role, member.is_active = body.role, body.is_active
+    db.commit()
+    return dump(member, ['id', 'email', 'role', 'is_active'])
 
 
 @app.get('/api/v1/imports')
@@ -292,7 +385,7 @@ def update_segment(segment_id: UUID, body: SegmentWrite, user: CurrentUser, db: 
     validate_definition(db, definition, user.mall_id)
     dependent = db.scalars(select(RecommendationRule).where(RecommendationRule.segment_id == segment.id)).all()
     if any(not destination_compatible(definition, rule.destination_tenant_id) for rule in dependent):
-        raise AppError('dependent_rule_conflict', 'Назначение связанных рекомендаций должно оставаться в исключении покупок', 409)
+        raise AppError('dependent_rule_conflict', 'Арендатор назначения связанных рекомендаций должен оставаться в условиях исключения', 409)
     segment.name, segment.definition = body.name, definition
     db.commit()
     return dump(segment, ['id', 'name', 'definition', 'created_at', 'updated_at'])
@@ -312,7 +405,7 @@ def validate_rule(db, body, user):
     segment = scoped(db, Segment, body.segment_id, user.mall_id)
     scoped(db, Tenant, body.destination_tenant_id, user.mall_id)
     if not destination_compatible(segment.definition, body.destination_tenant_id):
-        raise AppError('invalid_destination', 'Назначение должно быть исключено по покупкам в сегменте')
+        raise AppError('invalid_destination', 'Событие у арендатора назначения должно быть исключено в сегменте')
 
 
 @app.get('/api/v1/recommendation-rules')

@@ -8,7 +8,7 @@ from app.contracts import EventType, StrictModel
 class SourceCoveragePatch(StrictModel):
     coverage_from: AwareDatetime | None = None
     coverage_to: AwareDatetime | None = None
-    covered_event_types: list[EventType] | None = Field(default=None, max_length=3)
+    covered_event_types: list[EventType] | None = Field(default=None, max_length=4)
 
     @field_validator('coverage_from', 'coverage_to', mode='before')
     @classmethod

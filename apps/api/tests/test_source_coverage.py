@@ -148,7 +148,7 @@ def test_coverage_change_recalculates_segment_and_recommendation_without_changin
     ids = dataset['ids']
     original = source(client)
     members = f'/api/v1/segments/{ids["segment"]}/members'
-    customer = next(c for c in client.get('/api/v1/customers?q=G001').json()['items'] if c['global_customer_key'] == 'G001')
+    customer = client.get('/api/v1/customers?q=g001@example.invalid').json()['items'][0]
     recommendations = f'/api/v1/customers/{customer["id"]}/recommendations'
     assert client.get(members).json()['evaluation']['eligible_count'] == 5
     assert len(client.get(recommendations).json()['items']) == 1
@@ -179,3 +179,8 @@ def test_coverage_api_contract():
     assert spec['paths']['/api/v1/sources/{source_id}/coverage']['patch']['operationId'] == 'updateSourceCoverage'
     contract('SourceCoveragePatch', {'covered_event_types': []})
     contract('SourceCoveragePatch', {'coverage_from': None, 'coverage_to': None})
+
+
+@pytest.fixture
+def client(admin_client):
+    return admin_client

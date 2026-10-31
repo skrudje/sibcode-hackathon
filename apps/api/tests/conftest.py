@@ -8,6 +8,7 @@ TEST_URL = os.environ.get('TEST_DATABASE_URL', 'postgresql+psycopg://hryukers:hr
 if not TEST_URL.rsplit('/', 1)[-1].endswith('_test'):
     raise RuntimeError('Tests require a separate database ending in _test')
 os.environ['DATABASE_URL'] = TEST_URL
+os.environ['SEED_WORKSPACE_DATA'] = 'false'
 
 from sqlalchemy.engine import make_url
 from alembic import command
@@ -44,6 +45,14 @@ def isolated(tmp_path):
 def client():
     with TestClient(app, headers={'Origin': settings.allowed_origins.split(',')[0]}) as c:
         response = c.post('/api/v1/auth/login', json={'email': settings.demo_email, 'password': settings.demo_password})
+        assert response.status_code == 200
+        yield c
+
+
+@pytest.fixture
+def admin_client():
+    with TestClient(app, headers={'Origin': settings.allowed_origins.split(',')[0]}) as c:
+        response = c.post('/api/v1/auth/login', json={'email': settings.admin_email, 'password': settings.admin_password})
         assert response.status_code == 200
         yield c
 

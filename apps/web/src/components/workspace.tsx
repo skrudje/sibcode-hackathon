@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRight, Database, GitBranch, HelpCircle, LayoutDashboard, Link2,
+  ArrowRight, Cable, Database, GitBranch, HelpCircle, LayoutDashboard, Link2,
   LoaderCircle, LogOut, PanelLeft, Radar, RefreshCw, Search, Send, Sparkles, Users,
 } from "lucide-react";
 import { api } from "../api";
@@ -18,6 +18,7 @@ export const workspaceLinks = [
   { to: "/recommendations", label: "Рекомендации", description: "Правила и предложения арендаторов", icon: Sparkles },
   { to: "/campaigns", label: "Кампании", description: "Подготовка аудитории и выгрузка CSV", icon: Send },
   { to: "/radar", label: "Радар новых визитов", description: "Связи арендаторов и новые аудитории", icon: Radar },
+  { to: "/integrations", label: "Интеграции", description: "Арендаторы, API, расписания и доступы", icon: Cable },
 ];
 
 const sidebarKey = "hryukers.sidebar-collapsed";
@@ -26,8 +27,9 @@ function savedSidebar() {
   catch { return false; }
 }
 
-export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
+export function Workspace({ email, role, onHelp, onLogout, loggingOut, children }: {
   email: string;
+  role: "admin" | "marketer";
   onHelp: () => void;
   onLogout: () => void;
   loggingOut: boolean;
@@ -108,7 +110,7 @@ export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
           </button>
           <div className="account">
             <span className="avatar avatar-user" aria-hidden>МК</span>
-            <div><strong>Маркетолог УК</strong><span title={email}>{email}</span></div>
+            <div><strong>{role === "admin" ? "Администратор" : "Маркетолог УК"}</strong><span title={email}>{email}</span></div>
             <button className="icon-button" aria-label="Выйти" title="Выйти" disabled={loggingOut} onClick={onLogout}>
               <LogOut size={16} />
             </button>
@@ -145,7 +147,7 @@ export function Workspace({ email, onHelp, onLogout, loggingOut, children }: {
         </div>
         <div className="statusbar-group statusbar-meta">
           {fetching > 0 && <span className="fetch-status"><LoaderCircle size={12} className="spin" /> Обновление…</span>}
-          <span>Демоданные</span><span>КРСК · UTC+7</span><span>{desktop ? "Desktop" : "Browser"} · 0.1.0</span>
+          <span>КРСК · UTC+7</span><span>{desktop ? "Desktop" : "Browser"} · 0.1.0</span>
         </div>
       </footer>
       {commands && <QuickSwitch onClose={() => setCommands(false)} />}

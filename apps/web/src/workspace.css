@@ -58,6 +58,44 @@ kbd { font: 10px "Cascadia Code", Consolas, monospace; color: #87969f; white-spa
 .desktop-settings { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: transparent; padding: 5px; border: 0; border-radius: 4px; color: #6b7d89; font-size: 11px; }
 .desktop-settings:hover { color: #168363; background: #16836308; }
 .desktop-settings svg { width: 14px; height: 14px; }
+.help-tip { display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; color: #8a9c97; padding: 2px; vertical-align: middle; border-radius: 50%; cursor: help; flex-shrink: 0; }
+.help-tip:hover, .help-tip:focus-visible { color: #168363; background: #e8f2ed; outline: 2px solid #16836344; }
+.heading-with-help { display: flex; align-items: center; gap: 8px; }
+.help-tooltip { position: fixed; z-index: 200; width: min(290px, calc(100vw - 24px)); background: #253c33; color: #e7f1ec; padding: 12px 14px; border: 1px solid #3f5d4d; border-radius: 7px; box-shadow: 0 7px 25px #152d3326; font-size: 12px; font-weight: 400; line-height: 1.7; pointer-events: none; }
+.help-tooltip strong { display: block; font-size: 12px; color: #fff; margin-bottom: 5px; font-weight: 600; }
+.help-tooltip span { display: block; }
+.integration-explainer { display: flex; align-items: flex-start; gap: 16px; padding: 20px; border: 1px solid #d8e6dd; border-radius: 7px; background: #f1f7f3; }
+.integration-symbol { display: grid; place-items: center; flex-shrink: 0; width: 43px; height: 43px; border-radius: 9px; background: #e1efe6; color: #388663; }
+.integration-explainer > div { flex: 1; min-width: 0; }
+.integration-explainer strong { color: #3c5748; font-size: 13px; font-weight: 600; }
+.integration-explainer p { color: #738a7c; font-size: 12px; line-height: 1.8; margin-top: 6px; }
+.integration-explainer > a { margin-top: 10px; font-size: 11px; white-space: nowrap; }
+.integration-explainer details { margin-top: 12px; font-size: 11px; color: #59816a; }
+.integration-explainer summary, .integration-form summary { cursor: pointer; }
+.integration-explainer pre, .integration-form pre { padding: 12px; overflow-x: auto; background: #e7eee9; color: #40684e; font: 11px/1.8 Consolas, monospace; border-radius: 5px; margin-top: 10px; }
+.integration-actions { display: flex; align-items: center; gap: 5px; }
+.integration-form > small, .integration-coverage > small { color: #85958c; line-height: 1.6; font-size: 11px; }
+.integration-coverage { border-top: 1px solid #e1e9e3; padding-top: 20px; }
+.integration-coverage h3 { font-size: 13px; margin-bottom: 8px; color: #455f4f; }
+.integration-coverage p { font-size: 11px; color: #809085; line-height: 1.8; margin-bottom: 14px; }
+.integration-form details { font-size: 11px; color: #6d8578; }
+.team-list { display: flex; flex-direction: column; gap: 8px; }
+.team-member { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #e3eae5; padding: 10px 0; }
+.team-member strong { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #4c6555; font-size: 12px; }
+.team-member select { width: 145px; font-size: 11px; }
+.team-create { display: flex; flex-direction: column; gap: 15px; padding-top: 15px; }
+.team-create h3 { color: #496652; font-size: 13px; }
+.connection-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+.connection-card { padding: 18px; }
+.connection-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 10px; }
+.connection-card h2 { color: #405a49; font-size: 14px; line-height: 1.5; }
+.connection-card > p { color: #8a9d90; font-size: 11px; margin-top: 5px; }
+.connection-card dl { display: flex; flex-direction: column; gap: 12px; margin: 18px 0; font-size: 10px; }
+.connection-card dt { color: #8b9c90; margin-bottom: 5px; }
+.connection-card dd { margin: 0; color: #546e5c; font-size: 11px; }
+.connection-file { position: relative; width: 100%; cursor: pointer; font-size: 11px; overflow: hidden; }
+.connection-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+@media (max-width: 1150px) { .connection-cards { grid-template-columns: repeat(2,minmax(0,1fr)); } .integration-explainer { flex-wrap: wrap; } }
 .connection-settings { gap: 22px; }
 .settings-intro h3 { font-size: 14px; color: #354c42; margin-bottom: 7px; }
 .settings-intro p, .settings-server-form p { color: #71847b; line-height: 1.7; font-size: 12px; }

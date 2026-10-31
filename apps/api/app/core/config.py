@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     upload_dir: str = '.data/uploads'
     demo_dir: str = '.data/demo'
     mock_source_url: str = 'http://localhost:8011/events'
+    connector_allowed_hosts: str = 'mock-source,localhost,127.0.0.1'
+    connector_http_hosts: str = 'mock-source,localhost,127.0.0.1'
+    admin_email: str = 'admin@example.com'
+    admin_password: str = 'HryukersAdmin2026!'
+    seed_workspace_data: bool = False
 
     def path(self, name: str) -> Path:
         path = Path(getattr(self, name))

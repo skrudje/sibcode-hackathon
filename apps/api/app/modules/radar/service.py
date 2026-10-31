@@ -20,7 +20,7 @@ from app.models import Campaign, Customer, Event, RecommendationRule, Segment, S
 from app.modules.segments.service import active_rule, scoped
 from .contracts import RadarCampaignWrite, RadarOptions
 
-EVENT_TYPES = ('visit', 'purchase', 'booking')
+EVENT_TYPES = ('visit', 'purchase', 'booking', 'interaction')
 
 
 def node_public(tenant, source, options, now):
@@ -70,7 +70,8 @@ def analyze(db, mall_id, options):
     opportunities, contexts = [], {}
     complete_patterns = 0
     for destination in ready:
-        if 'purchase' not in sources[destination].covered_event_types:
+        destination_type = 'interaction' if 'interaction' in sources[destination].covered_event_types else 'purchase'
+        if destination_type not in sources[destination].covered_event_types:
             continue
         origins = [tid for tid in ready if tid != destination]
         for size in (1, 2):
@@ -91,39 +92,41 @@ def analyze(db, mall_id, options):
                         if event.event_type in nodes[event.tenant_id]['event_types']:
                             hits[event.tenant_id].add(event.customer_id)
                             evidence.setdefault((event.customer_id, event.tenant_id, 'any'), event)
-                        if event.event_type == 'purchase':
-                            buyers[event.tenant_id].add(event.customer_id)
-                            evidence.setdefault((event.customer_id, event.tenant_id, 'purchase'), event)
+                        if event.event_type in ('purchase', 'interaction'):
+                            buyers[(event.tenant_id, event.event_type)].add(event.customer_id)
+                            evidence.setdefault((event.customer_id, event.tenant_id, event.event_type), event)
                     windows[as_of] = hits, buyers, evidence, population
                 hits, buyers, evidence, population = windows[as_of]
                 cohort = set.intersection(*(hits[tid] for tid in origin_ids))
-                shared = cohort & buyers[destination]
-                candidates = cohort - buyers[destination]
+                target_customers = buyers[(destination, destination_type)]
+                shared = cohort & target_customers
+                candidates = cohort - target_customers
                 if not candidates or len(shared) < options.min_shared_customers:
                     continue
                 conditional = len(shared) / len(cohort)
-                baseline = len(buyers[destination]) / len(population)
+                baseline = len(target_customers) / len(population)
                 lift = conditional / baseline
                 if lift < options.min_lift:
                     continue
                 definition = dict(lookback_days=options.lookback_days,
                     include_all=[dict(tenant_id=str(tid), event_types=nodes[tid]['event_types']) for tid in origin_ids],
-                    exclude_any=[dict(tenant_id=str(destination), event_types=['purchase'])],
+                    exclude_any=[dict(tenant_id=str(destination), event_types=[destination_type])],
                     require_verified_identity=True, require_complete_coverage=True)
                 identifier = uuid5(mall_id, 'radar:' + json.dumps(definition, sort_keys=True))
                 origin_names = ' + '.join(nodes[tid]['name'] for tid in origin_ids)
-                explanation = (f'Среди {len(cohort)} подтверждённых клиентов с событиями в «{origin_names}» '
-                    f'{len(shared)} имеют покупку в «{nodes[destination]["name"]}» за то же окно. '
+                noun = 'взаимодействие' if destination_type == 'interaction' else 'покупку'
+                explanation = (f'Среди {len(cohort)} клиентов с контактами и событиями в «{origin_names}» '
+                    f'{len(shared)} имеют {noun} в «{nodes[destination]["name"]}» за то же окно. '
                     f'Частота {conditional:.1%}, в общей активной базе — {baseline:.1%}; отношение {lift:.2f}. '
-                    f'У {len(candidates)} клиентов такой покупки в полной доступной истории нет.')
+                    f'У {len(candidates)} клиентов такого события в полной доступной истории нет.')
                 item = dict(id=identifier, origins=[nodes[tid] for tid in origin_ids], destination=nodes[destination],
                     definition=definition, as_of=as_of, window_start=start,
                     population_count=len(population), cohort_count=len(cohort), shared_count=len(shared),
-                    destination_count=len(buyers[destination]), candidate_count=len(candidates),
+                    destination_count=len(target_customers), candidate_count=len(candidates),
                     unknown_count=len(customers) - len(verified), conditional_rate=conditional,
                     baseline_rate=baseline, lift=lift, explanation=explanation, offers=offers[destination])
                 opportunities.append(item)
-                contexts[identifier] = (candidates, shared, evidence, origin_ids, destination)
+                contexts[identifier] = (candidates, shared, evidence, origin_ids, destination, destination_type)
     opportunities.sort(key=lambda x: (-x['lift'], -x['shared_count'], -x['candidate_count'], str(x['id'])))
     empty = None if opportunities else ('no_data' if not events else 'insufficient_history' if not complete_patterns else 'insufficient_support')
     report = dict(evaluated_at=now, options=options.model_dump(), customer_count=len(customers),
@@ -140,12 +143,12 @@ def snapshot(mall_id, options, opportunity_id=None, limit=20, offset=0):
         item = next((x for x in report['opportunities'] if x['id'] == opportunity_id), None)
         if item is None:
             raise AppError('radar_opportunity_not_found', 'Возможность больше не соответствует фильтрам. Обновите радар.', 404)
-        candidates, shared, evidence, origins, destination = contexts[opportunity_id]
+        candidates, shared, evidence, origins, destination, destination_type = contexts[opportunity_id]
 
         def customer_public(customer, include_destination=False):
             observed = [evidence[(customer.id, tid, 'any')] for tid in origins]
             if include_destination:
-                observed.append(evidence[(customer.id, destination, 'purchase')])
+                observed.append(evidence[(customer.id, destination, destination_type)])
             return dict(id=customer.id, global_customer_key=customer.global_customer_key, display_name=customer.display_name,
                 observed_events=[dict(event_id=e.id, tenant_id=e.tenant_id, event_type=e.event_type, occurred_at=e.occurred_at) for e in observed])
 

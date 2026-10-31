@@ -47,7 +47,7 @@ def test_discovery_evidence_deduplication_and_contract(client, radar_data):
     assert item['lift'] == pytest.approx(.625 / .3)
     detail = client.get(f'/api/v1/radar/opportunities/{item["id"]}?limit=5&offset=2').json()
     assert detail['total'] == 15 and len(detail['items']) == 5
-    assert detail['items'][0]['global_customer_key'] == 'R028'
+    assert all(c['display_name'].startswith('Демо · Посетитель R') for c in detail['items'])
     assert len(detail['items'][0]['observed_events']) == 2
     assert len(detail['shared_examples']) == 3 and len(detail['shared_examples'][0]['observed_events']) == 3
     with SessionLocal.begin() as db:
@@ -83,7 +83,7 @@ def test_campaign_atomicity_idempotency_preview_and_followup(client, radar_data)
         process_job(identifier)
     detail = client.get(f'/api/v1/radar/opportunities/{item["id"]}').json()
     assert detail['total'] == 14
-    assert 'R026' not in [c['global_customer_key'] for c in detail['items']]
+    assert all('R026' not in c['display_name'] for c in detail['items'])
     members = client.get(f'/api/v1/segments/{result["segment_id"]}/members').json()
     assert members['total'] == 14 and members['evaluation']['unknown_count'] == 2
     assert client.post('/api/v1/radar/campaigns', json=body).json()['campaign_id'] == result['campaign_id']
@@ -132,7 +132,7 @@ def test_other_mall_scope_and_demo_isolation(client, radar_data):
         mall = Mall(name='Чужой ТЦ')
         db.add(mall); db.flush()
         db.add(Customer(mall_id=mall.id, global_customer_key='R026', identity_status='verified'))
-        db.scalar(select(User)).mall_id = mall.id
+        db.scalar(select(User).where(User.role == 'admin')).mall_id = mall.id
     report = client.get('/api/v1/radar').json()
     assert report['customer_count'] == 1 and report['nodes'] == [] and report['opportunities'] == []
     assert client.get(f'/api/v1/radar/opportunities/{item["id"]}').status_code == 404
@@ -170,7 +170,7 @@ def test_watermark_matches_dynamic_segment_and_excludes_later_events(client, rad
         sources = db.scalars(select(Source)).all()
         original = min(s.coverage_to for s in sources)
         Clock.frozen = original + timedelta(minutes=10)
-        customer = db.scalar(select(Customer).where(Customer.global_customer_key == 'R026'))
+        customer = db.scalar(select(Customer).where(Customer.display_name == 'Демо · Посетитель R026'))
         destination = next(s for s in sources if str(s.tenant_id) == item['destination']['tenant_id'])
         db.add(Event(mall_id=customer.mall_id, customer_id=customer.id, tenant_id=destination.tenant_id, source_id=destination.id,
             external_event_id='later-than-declared-coverage', event_type='purchase', amount=100, currency='RUB',
@@ -190,3 +190,8 @@ def test_missing_offer_does_not_leave_partial_campaign(client, radar_data):
     with SessionLocal() as db:
         assert db.scalar(select(func.count(Campaign.id))) == 1
         assert db.scalar(select(func.count(Segment.id))) == 1
+
+
+@pytest.fixture
+def client(admin_client):
+    return admin_client

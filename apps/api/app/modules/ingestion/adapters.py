@@ -11,6 +11,7 @@ from app.core.errors import AppError
 MAX_BYTES = 10 * 1024 * 1024
 MAX_ROWS = 10000
 REQUIRED_COLUMNS = {
+    'contacts': ('phone', 'email', 'time'),
     'crm_csv': ('customer_id', 'event_id', 'event_type', 'event_time'),
     'pos_xlsx': ('id_клиента', 'id_чека', 'тип_события', 'дата_операции'),
 }
@@ -43,12 +44,17 @@ def validate_headers(kind, headers):
 
 def read_rows(kind, path):
     try:
-        if kind == 'rest_api':
+        if kind == 'contacts' and Path(path).suffix == '.json':
+            value = json.loads(Path(path).read_text())
+            rows = value['records']
+            if not isinstance(rows, list):
+                raise ValueError()
+        elif kind == 'rest_api':
             value = json.loads(Path(path).read_text())
             rows = value['events']
             if not isinstance(rows, list):
                 raise ValueError()
-        elif kind == 'crm_csv':
+        elif kind == 'crm_csv' or (kind == 'contacts' and Path(path).suffix == '.csv'):
             # Inspect the original header before Polars renames duplicate names.
             with Path(path).open(encoding='utf-8-sig', newline='') as file:
                 headers = next(csv.reader(file, strict=True), None)
@@ -72,7 +78,7 @@ def read_rows(kind, path):
                     rows.append(dict(zip(headers, row)))
             finally:
                 book.close()
-        if not rows:
+        if not rows and not (kind == 'contacts' and Path(path).suffix == '.json'):
             raise AppError('empty_import', 'Источник не содержит записей')
         if len(rows) > MAX_ROWS:
             raise AppError('too_many_rows', 'В одном задании допускается до 10 000 строк')
@@ -90,6 +96,9 @@ def read_rows(kind, path):
 def normalize(kind, row):
     if not isinstance(row, dict):
         raise AppError('missing_required_field', 'Запись должна быть объектом')
+    if kind == 'contacts':
+        from app.modules.integrations.service import normalized_event
+        return normalized_event(row)
     if kind == 'rest_api':
         customer = row.get('customer') or {}
         if not isinstance(customer, dict):

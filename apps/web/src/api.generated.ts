@@ -119,7 +119,8 @@ export interface paths {
         /** Арендаторы текущего ТЦ */
         get: operations["listTenants"];
         put?: never;
-        post?: never;
+        /** Create Tenant */
+        post: operations["create_tenant_api_v1_tenants_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -574,6 +575,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integration List */
+        get: operations["integration_list_api_v1_integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/{source_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Integration Update */
+        patch: operations["integration_update_api_v1_integrations__source_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/integrations/{source_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Integration Test */
+        post: operations["integration_test_api_v1_integrations__source_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Contact Template */
+        get: operations["contact_template_api_v1_integrations_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team List */
+        get: operations["team_list_api_v1_team_get"];
+        put?: never;
+        /** Team Create */
+        post: operations["team_create_api_v1_team_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/team/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Team Update */
+        patch: operations["team_update_api_v1_team__user_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/demo/files/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Demo File */
+        get: operations["demo_file_api_v1_demo_files__name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -605,7 +726,7 @@ export interface components {
             /** Format: email */
             email: string;
             /** @enum {string} */
-            role: "marketer";
+            role: "marketer" | "admin";
             /** Format: uuid */
             mall_id: string;
         };
@@ -638,8 +759,8 @@ export interface components {
             tenant_id: string;
             name: string;
             /** @enum {string} */
-            kind: "crm_csv" | "pos_xlsx" | "rest_api";
-            covered_event_types: ("visit" | "purchase" | "booking")[];
+            kind: "crm_csv" | "pos_xlsx" | "rest_api" | "contacts";
+            covered_event_types: ("visit" | "purchase" | "booking" | "interaction")[];
             coverage_from: string | null;
             coverage_to: string | null;
             last_success_at: string | null;
@@ -758,7 +879,7 @@ export interface components {
             tenant_id: string;
             external_event_id: string;
             /** @enum {string} */
-            event_type: "visit" | "purchase" | "booking";
+            event_type: "visit" | "purchase" | "booking" | "interaction";
             /** Format: date-time */
             occurred_at: string;
             amount: string | null;
@@ -776,7 +897,7 @@ export interface components {
         EventCondition: {
             /** Format: uuid */
             tenant_id: string;
-            event_types: ("visit" | "purchase" | "booking")[];
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
         };
         SegmentDefinition: {
             lookback_days: number;
@@ -870,14 +991,14 @@ export interface components {
             /** Format: uuid */
             tenant_id: string;
             /** @enum {string} */
-            event_type: "visit" | "purchase" | "booking";
+            event_type: "visit" | "purchase" | "booking" | "interaction";
             /** Format: date-time */
             occurred_at: string;
         };
         AbsenceCheck: {
             /** Format: uuid */
             tenant_id: string;
-            event_types: ("visit" | "purchase" | "booking")[];
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
             /** Format: date-time */
             window_start: string;
             /** Format: date-time */
@@ -1001,7 +1122,7 @@ export interface components {
             /** @description Конец заявленного периода; null допустим только при итоговом coverage_from=null. */
             coverage_to?: string | null;
             /** @description Типы событий, для которых источник заявляет полноту. Пустой массив допустим; null запрещён. */
-            covered_event_types?: ("visit" | "purchase" | "booking")[];
+            covered_event_types?: ("visit" | "purchase" | "booking" | "interaction")[];
         };
         /** RadarOptions */
         RadarOptions: {
@@ -1035,7 +1156,7 @@ export interface components {
             /** Category */
             category: string;
             /** Event Types */
-            event_types: ("visit" | "purchase" | "booking")[];
+            event_types: ("visit" | "purchase" | "booking" | "interaction")[];
             /** Coverage From */
             coverage_from: string | null;
             /** Coverage To */
@@ -1160,7 +1281,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "visit" | "purchase" | "booking";
+            event_type: "visit" | "purchase" | "booking" | "interaction";
             /**
              * Occurred At
              * Format: date-time
@@ -1256,6 +1377,206 @@ export interface components {
             job_ids: string[];
             /** Description */
             description: string;
+        };
+        /** Body_upload_api_v1_sources__source_id__imports_post */
+        Body_upload_api_v1_sources__source_id__imports_post: {
+            /** File */
+            file: string;
+        };
+        /** ConnectionTest */
+        ConnectionTest: {
+            /**
+             * Status
+             * @default ok
+             * @constant
+             */
+            status: "ok";
+            /** Record Count */
+            record_count: number;
+            /** Message */
+            message: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntegrationInfo */
+        IntegrationInfo: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /** Category */
+            category: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Enabled */
+            enabled: boolean;
+            /** Interval Minutes */
+            interval_minutes: number;
+            /** Last Success At */
+            last_success_at: string | null;
+            /** Next Sync At */
+            next_sync_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Coverage From */
+            coverage_from: string | null;
+            /** Coverage To */
+            coverage_to: string | null;
+            /** Covered Event Types */
+            covered_event_types: string[];
+            /** Has Credentials */
+            has_credentials: boolean;
+            /** Has Api */
+            has_api: boolean;
+            /** Api Url */
+            api_url?: string | null;
+            /** Credential Env */
+            credential_env?: string | null;
+        };
+        /** IntegrationPage */
+        IntegrationPage: {
+            /** Items */
+            items: components["schemas"]["IntegrationInfo"][];
+            /** Total */
+            total: number;
+        };
+        /** IntegrationWrite */
+        IntegrationWrite: {
+            /**
+             * Api Url
+             * @default
+             */
+            api_url: string;
+            /**
+             * Interval Minutes
+             * @default 15
+             */
+            interval_minutes: number;
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Credential Env */
+            credential_env?: string | null;
+            /** Coverage From */
+            coverage_from?: string | null;
+            /** Coverage To */
+            coverage_to?: string | null;
+        };
+        /** TeamMember */
+        TeamMember: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "marketer";
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** TeamPage */
+        TeamPage: {
+            /** Items */
+            items: components["schemas"]["TeamMember"][];
+            /** Total */
+            total: number;
+        };
+        /** TenantInfo */
+        TenantInfo: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** TenantWrite */
+        TenantWrite: {
+            /** Name */
+            name: string;
+            /** Category */
+            category: string;
+        };
+        /** UserPatch */
+        UserPatch: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "marketer" | "admin";
+            /** Is Active */
+            is_active: boolean;
+        };
+        /** UserWrite */
+        UserWrite: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+            /**
+             * Role
+             * @default marketer
+             * @enum {string}
+             */
+            role: "marketer" | "admin";
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** ContactRecord */
+        ContactRecord: {
+            /**
+             * Phone
+             * @default null
+             */
+            phone: string | null;
+            /**
+             * Email
+             * @default null
+             */
+            email: string | null;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
         };
     };
     responses: never;
@@ -1785,6 +2106,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    create_tenant_api_v1_tenants_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TenantWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4168,6 +4522,231 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    integration_list_api_v1_integrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationPage"];
+                };
+            };
+        };
+    };
+    integration_update_api_v1_integrations__source_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationInfo"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    integration_test_api_v1_integrations__source_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionTest"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    contact_template_api_v1_integrations_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    team_list_api_v1_team_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamPage"];
+                };
+            };
+        };
+    };
+    team_create_api_v1_team_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserWrite"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_update_api_v1_team__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserPatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_file_api_v1_demo_files__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

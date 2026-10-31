@@ -140,7 +140,8 @@ def test_schema_error_reaches_job_message_without_retry_or_source_changes(client
 
 
 @pytest.mark.parametrize('kind', ['crm_csv', 'pos_xlsx'])
-def test_own_file_import_does_not_infer_or_extend_explicit_coverage(client, kind):
+def test_own_file_import_does_not_infer_or_extend_explicit_coverage(admin_client, kind):
+    client = admin_client
     original = next(s for s in client.get('/api/v1/sources').json()['items'] if s['kind'] == kind)
     # An explicit unknown period stays unknown even after a valid successful import.
     patch = client.patch(f'/api/v1/sources/{original["id"]}/coverage', json={
@@ -161,7 +162,7 @@ def test_own_file_import_does_not_infer_or_extend_explicit_coverage(client, kind
     current = next(s for s in client.get('/api/v1/sources').json()['items'] if s['id'] == original['id'])
     assert current['coverage_from'] is current['coverage_to'] is None
     assert current['covered_event_types'] == [] and current['last_success_at'] is not None
-    customer = client.get('/api/v1/customers?q=MY001').json()['items'][0]
+    customer = client.get('/api/v1/customers?q=0007').json()['items'][0]
     profile = client.get(f'/api/v1/customers/{customer["id"]}').json()
     assert profile['external_identities'][0]['external_customer_id'] == '0007'
     events = client.get(f'/api/v1/customers/{customer["id"]}/events').json()['items']

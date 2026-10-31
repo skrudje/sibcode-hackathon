@@ -71,11 +71,13 @@ export const eventNames = {
   visit: "Визит",
   purchase: "Покупка",
   booking: "Бронирование",
+  interaction: "Взаимодействие",
 };
 export const sourceNames = {
   crm_csv: "CRM · CSV",
   pos_xlsx: "POS · Excel",
   rest_api: "REST API · JSON",
+  contacts: "Телефон · Email · Время",
 };
 export const reasonNames: Record<string, string> = {
   identity_unverified: "Нет корректного телефона или email для сопоставления",
