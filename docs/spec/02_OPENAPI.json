@@ -746,6 +746,131 @@
         ]
       }
     },
+    "/api/v1/sources/{source_id}/coverage": {
+      "patch": {
+        "operationId": "updateSourceCoverage",
+        "summary": "Изменить заявленную полноту истории источника",
+        "tags": [
+          "catalog"
+        ],
+        "description": "Только источник текущего ТЦ. Чужой или отсутствующий ID возвращает 404. Изменение сохраняется атомарно и влияет на следующий расчёт сегментов и рекомендаций. Импорт не расширяет покрытие автоматически. Полнота является явным утверждением оператора, а не результатом анализа дат покупок.",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceCoveragePatch"
+              },
+              "examples": {
+                "setPeriod": {
+                  "value": {
+                    "coverage_from": "2026-07-01T00:00:00+07:00",
+                    "coverage_to": "2026-10-30T23:59:59+07:00",
+                    "covered_event_types": [
+                      "purchase"
+                    ]
+                  }
+                },
+                "clearPeriod": {
+                  "value": {
+                    "coverage_from": null,
+                    "coverage_to": null
+                  }
+                },
+                "removeGuarantees": {
+                  "value": {
+                    "covered_event_types": []
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Успех",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет сессии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Доступ запрещён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка входных данных",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sources/{source_id}/imports": {
       "post": {
         "operationId": "createFileImport",
@@ -845,7 +970,7 @@
             }
           }
         },
-        "description": "Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB.",
+        "description": "Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB. Проверка заголовков выполняется worker: ошибки структуры сохраняются в failure_code=invalid_file_schema и failure_message задания с перечислением отсутствующих и повторяющихся колонок.",
         "parameters": [
           {
             "name": "source_id",
@@ -4985,6 +5110,52 @@
           "offset"
         ],
         "additionalProperties": false
+      },
+      "SourceCoveragePatch": {
+        "type": "object",
+        "description": "Частичное явное изменение полноты истории. Хотя бы одно поле обязательно. Неуказанные поля сохраняются. Проверяется итоговая пара дат: начало строго раньше окончания, окончание не позже текущего времени. Даты имеют часовой пояс и сохраняются в UTC; обе даты null означают неизвестный период. [] в covered_event_types снимает гарантии полноты по всем типам событий.",
+        "properties": {
+          "coverage_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Начало заявленного периода; null допустим только при итоговом coverage_to=null."
+          },
+          "coverage_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Конец заявленного периода; null допустим только при итоговом coverage_from=null."
+          },
+          "covered_event_types": {
+            "type": "array",
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "visit",
+                "purchase",
+                "booking"
+              ]
+            },
+            "description": "Типы событий, для которых источник заявляет полноту. Пустой массив допустим; null запрещён."
+          }
+        },
+        "additionalProperties": false,
+        "minProperties": 1
       }
     }
   }

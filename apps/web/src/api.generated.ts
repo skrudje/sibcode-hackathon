@@ -143,6 +143,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sources/{source_id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Изменить заявленную полноту истории источника
+         * @description Только источник текущего ТЦ. Чужой или отсутствующий ID возвращает 404. Изменение сохраняется атомарно и влияет на следующий расчёт сегментов и рекомендаций. Импорт не расширяет покрытие автоматически. Полнота является явным утверждением оператора, а не результатом анализа дат покупок.
+         */
+        patch: operations["updateSourceCoverage"];
+        trace?: never;
+    };
     "/api/v1/sources/{source_id}/imports": {
         parameters: {
             query?: never;
@@ -154,7 +174,7 @@ export interface paths {
         put?: never;
         /**
          * Поставить CSV/XLSX в обработку
-         * @description Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB.
+         * @description Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB. Проверка заголовков выполняется worker: ошибки структуры сохраняются в failure_code=invalid_file_schema и failure_message задания с перечислением отсутствующих и повторяющихся колонок.
          */
         post: operations["createFileImport"];
         delete?: never;
@@ -895,6 +915,15 @@ export interface components {
             limit: number;
             offset: number;
         };
+        /** @description Частичное явное изменение полноты истории. Хотя бы одно поле обязательно. Неуказанные поля сохраняются. Проверяется итоговая пара дат: начало строго раньше окончания, окончание не позже текущего времени. Даты имеют часовой пояс и сохраняются в UTC; обе даты null означают неизвестный период. [] в covered_event_types снимает гарантии полноты по всем типам событий. */
+        SourceCoveragePatch: {
+            /** @description Начало заявленного периода; null допустим только при итоговом coverage_to=null. */
+            coverage_from?: string | null;
+            /** @description Конец заявленного периода; null допустим только при итоговом coverage_from=null. */
+            coverage_to?: string | null;
+            /** @description Типы событий, для которых источник заявляет полноту. Пустой массив допустим; null запрещён. */
+            covered_event_types?: ("visit" | "purchase" | "booking")[];
+        };
     };
     responses: never;
     parameters: never;
@@ -1446,6 +1475,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourcePage"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    updateSourceCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceCoveragePatch"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source"];
                 };
             };
             /** @description Нет сессии */

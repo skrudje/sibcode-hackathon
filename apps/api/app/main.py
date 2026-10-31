@@ -22,6 +22,8 @@ from app.models import AuthSession, Campaign, Customer, CustomerContact, Event, 
 from app.modules.exports.service import create_export, export_public, preview
 from app.modules.ingestion.adapters import MAX_BYTES
 from app.modules.segments.service import destination_compatible, evaluate, evaluation_summary, recommendations, scoped, validate_definition
+from app.modules.sources.contracts import SourceCoveragePatch
+from app.modules.sources.service import update_coverage
 
 app = FastAPI(title='Хрюкерсы CDP', version='0.1.0')
 log = logging.getLogger('hryukers')
@@ -163,6 +165,13 @@ def tenants(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
 @app.get('/api/v1/sources')
 def sources(user: CurrentUser, db: DB, limit: Limit = 20, offset: Offset = 0):
     return paginate(db, select(Source).where(Source.mall_id == user.mall_id).order_by(Source.name), limit, offset, lambda s: dump(s, SOURCE_FIELDS))
+
+
+@app.patch('/api/v1/sources/{source_id}/coverage')
+def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: CurrentUser, db: DB):
+    source = update_coverage(db, source_id, user.mall_id, body)
+    db.commit()
+    return dump(source, SOURCE_FIELDS)
 
 
 @app.post('/api/v1/sources/{source_id}/imports', status_code=202)
