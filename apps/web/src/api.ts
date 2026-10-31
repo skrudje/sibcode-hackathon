@@ -78,7 +78,7 @@ export const sourceNames = {
   rest_api: "REST API · JSON",
 };
 export const reasonNames: Record<string, string> = {
-  identity_unverified: "Нет подтверждённого общего ключа клиента",
+  identity_unverified: "Нет корректного телефона или email для сопоставления",
   insufficient_history: "Недостаточно истории для уверенного вывода",
   no_matching_rules: "Сейчас нет подходящих правил",
   no_active_offers: "Нет действующих предложений",

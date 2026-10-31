@@ -1,2 +1,2 @@
-﻿customer_id,global_customer_key,full_name,email,phone,event_id,event_type,event_time,amount,currency
-C-G001,G001,Посетитель 001,g001@example.invalid,+70000000001,C-001,purchase,2026-10-30T05:00:00Z,1300.00,RUB
+﻿customer_id,full_name,email,phone,event_id,event_type,event_time,amount,currency
+crm-901,Посетитель 001,g001@example.invalid,+70000000001,C-001,purchase,2026-10-30T05:00:00Z,1300.00,RUB

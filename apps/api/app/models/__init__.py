@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, LargeBinary, Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, LargeBinary, Numeric, String, Text, UniqueConstraint, Uuid, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -81,7 +81,11 @@ class ExternalIdentity(Identified, Base):
 
 class CustomerContact(Identified, Base):
     __tablename__ = 'customer_contacts'
-    __table_args__ = (UniqueConstraint('customer_id', 'source_id', 'external_customer_id', 'channel', 'value'),)
+    __table_args__ = (
+        UniqueConstraint('customer_id', 'source_id', 'external_customer_id', 'channel', 'value'),
+        Index('ix_contact_identity', 'channel', 'normalized_value',
+              postgresql_where=text("channel IN ('email', 'sms') AND normalized_value IS NOT NULL")),
+    )
     customer_id: Mapped[UUID] = mapped_column(ForeignKey('customers.id'), index=True)
     source_id: Mapped[UUID] = mapped_column(ForeignKey('sources.id'))
     external_customer_id: Mapped[str] = mapped_column(String(200))

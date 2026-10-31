@@ -193,10 +193,10 @@ function Avatar({ name, small = false }: { name: string; small?: boolean }) {
 function IdentityBadge({ status }: { status: string }) {
   return status === "verified" ? (
     <Badge tone="green">
-      <ShieldCheck size={12} /> Подтверждён
+      <ShieldCheck size={12} /> Есть контакты
     </Badge>
   ) : (
-    <Badge tone="amber">Один источник</Badge>
+    <Badge tone="amber">Нет контактов</Badge>
   );
 }
 function StatusBadge({ job }: { job: ImportJob }) {
@@ -500,17 +500,17 @@ function Layout({ email }: { email: string }) {
         >
           <div className="dialog-body">
             <p>
-              Платформа объединяет события трёх арендаторов по подтверждённому
-              общему ключу. Сегменты учитывают период наблюдения и полноту
-              доступной истории.
+              Платформа объединяет события арендаторов по совпадению
+              нормализованного телефона или email внутри ТЦ. Сегменты учитывают
+              период наблюдения и полноту доступной истории.
             </p>
             <ol className="help-steps">
               <li>Загрузите API кинотеатра, Excel кафе и CSV книжного.</li>
-              <li>Откройте профиль G001 и проверьте историю.</li>
+              <li>Найдите g001@example.invalid и проверьте общую историю.</li>
               <li>Посмотрите сегмент и объяснение рекомендации книжного C.</li>
               <li>Создайте CSV-выгрузку кампании.</li>
               <li>
-                Загрузите дополнительную покупку G001 в C — рекомендация
+                Загрузите дополнительную покупку посетителя 001 в C — рекомендация
                 исчезнет.
               </li>
             </ol>
@@ -650,10 +650,10 @@ function Overview() {
             tone: "purple",
           },
           {
-            label: "Подтверждённых профилей",
+            label: "Профилей с контактами",
             value: data?.verified_customer_count,
             icon: ShieldCheck,
-            hint: "Связаны общим клиентским ключом",
+            hint: "Есть корректный телефон или email",
             tone: "green",
           },
           {
@@ -736,7 +736,7 @@ function Overview() {
         </Panel>
         <Panel
           title="Качество идентификации"
-          subtitle="Объединяем только подтверждённые связи"
+          subtitle="Сопоставляем по телефону или email внутри ТЦ"
         >
           <div className="quality">
             <div
@@ -757,27 +757,28 @@ function Overview() {
                     : 0}
                   %
                 </strong>
-                <span>подтверждено</span>
+                <span>с контактами</span>
               </div>
             </div>
             <div className="legend">
               <div>
                 <span>
                   <i className="dot dot-blue" />
-                  Единый ключ
+                  Телефон или email
                 </span>
                 <strong>{data?.verified_customer_count ?? 0}</strong>
               </div>
               <div>
                 <span>
                   <i className="dot dot-gray" />
-                  Один источник
+                  Без контактов
                 </span>
                 <strong>{data?.source_only_customer_count ?? 0}</strong>
               </div>
             </div>
             <p>
-              Совпадение имени или контакта не объединяет профили автоматически.
+              Совпадение телефона или email объединяет записи. Если контакты
+              указывают на разные профили, импорт сообщает о конфликте.
             </p>
           </div>
         </Panel>
@@ -811,7 +812,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
         <thead>
           <tr>
             <th>Клиент</th>
-            <th>Единый ключ</th>
+            <th>ID профиля</th>
             <th>Идентификация</th>
             <th>Создан</th>
             <th />
@@ -830,7 +831,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
                 </Link>
               </td>
               <td>
-                <code>{c.global_customer_key ?? "Нет общего ключа"}</code>
+                <code>{c.global_customer_key ?? c.id}</code>
               </td>
               <td>
                 <IdentityBadge status={c.identity_status} />
@@ -840,7 +841,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
                 <Link
                   to={`/customers/${c.id}`}
                   className="table-link"
-                  aria-label={`Открыть ${c.global_customer_key ?? "профиль"}`}
+                  aria-label={`Открыть ${c.display_name ?? c.global_customer_key ?? "профиль"}`}
                 >
                   <ArrowUpRight size={18} />
                 </Link>
@@ -1092,7 +1093,7 @@ function Sources() {
           <span>
             <strong>Проверить изменение рекомендации</strong>
             <small>
-              Добавьте покупку посетителя G001 в книжном C после основного
+              Добавьте покупку посетителя 001 в книжном C после основного
               импорта.
             </small>
           </span>
@@ -1165,7 +1166,7 @@ function Customers() {
             <Search size={18} />
             <input
               aria-label="Поиск клиентов"
-              placeholder="Поиск по имени, ключу или контакту"
+              placeholder="Поиск по имени, телефону, email или ID"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -1184,8 +1185,8 @@ function Customers() {
               }}
             >
               <option value="">Все профили</option>
-              <option value="verified">Подтверждённые</option>
-              <option value="source_only">Один источник</option>
+              <option value="verified">С телефоном или email</option>
+              <option value="source_only">Без контактов</option>
             </select>
           </div>
         </div>
@@ -1248,7 +1249,7 @@ function CustomerProfile() {
           <div className="eyebrow">ЕДИНЫЙ ПРОФИЛЬ</div>
           <h1>{customer.display_name ?? "Без имени"}</h1>
           <div className="profile-meta">
-            <code>{customer.global_customer_key ?? "Нет общего ключа"}</code>
+            <code>{customer.global_customer_key ?? customer.id}</code>
             <IdentityBadge status={customer.identity_status} />
             <span>
               {customer.event_count} событий ·{" "}
@@ -1616,7 +1617,7 @@ function SegmentForm({
           onChange={setExclude}
         />
         <Message>
-          Учитываются подтверждённые профили и полностью покрытый период
+          Учитываются профили с телефоном или email и полностью покрытый период
           истории. Состояние unknown не включается в аудиторию.
         </Message>
         <ErrorMessage error={mutation.error} />
