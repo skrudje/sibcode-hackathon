@@ -1,16 +1,63 @@
-import { useState } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownToLine, Check, LoaderCircle, RefreshCw, Server, Settings, Unplug } from "lucide-react";
 import { api } from "../api";
-import { connectServer, desktop, getConnection, saveExport } from "../transport";
+import { checkConnection, connectServer, desktop, getConnection, saveExport } from "../transport";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
+
+const ConnectionSwitch = createContext<(switching: boolean) => void>(() => {});
+
+export function useConnectionHealth(enabled = true) {
+  return useQuery({
+    queryKey: ["connection-health"],
+    queryFn: async ({ signal }) => {
+      if (desktop) {
+        await checkConnection();
+        return { status: "ok" };
+      }
+      return api<{ status: string }>("/health/ready", { signal });
+    },
+    enabled,
+    staleTime: 10_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: desktop,
+    retry: false,
+  });
+}
+
+/** Keep connectivity checks and session switching independent of the current page. */
+export function DesktopSession({ children }: { children: ReactNode }) {
+  const client = useQueryClient();
+  const [switching, setSwitching] = useState(false);
+  const health = useConnectionHealth(desktop && !switching);
+  useEffect(() => {
+    if (desktop && health.isSuccess) void client.invalidateQueries({
+      predicate: query => query.queryKey[0] !== "connection-health"
+        && !String(query.queryKey[0]).startsWith("desktop-")
+        && query.state.status === "error",
+    });
+  }, [client, health.isSuccess, health.dataUpdatedAt]);
+  useEffect(() => {
+    if (!desktop) return;
+    const failed = () => { void client.invalidateQueries({ queryKey: ["connection-health"] }); };
+    window.addEventListener("connection-error", failed);
+    return () => window.removeEventListener("connection-error", failed);
+  }, [client]);
+  if (!desktop) return children;
+  return <ConnectionSwitch.Provider value={setSwitching}>
+    <div inert={switching} aria-hidden={switching || undefined} style={switching ? { visibility: "hidden" } : undefined}>{children}</div>
+    {switching && createPortal(<div className="desktop-switching" role="status"><LoaderCircle className="spin" size={23} />Проверяем сервер…</div>, document.body)}
+  </ConnectionSwitch.Provider>;
+}
 
 export function DesktopConnection({ className = "desktop-settings", label = "Настройки" }: {
   className?: string;
   label?: string;
 }) {
   const client = useQueryClient();
+  const setSwitching = useContext(ConnectionSwitch);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [server, setServer] = useState("");
@@ -21,22 +68,26 @@ export function DesktopConnection({ className = "desktop-settings", label = "Н�
     staleTime: Infinity,
     retry: false,
   });
-  const health = useQuery({
-    queryKey: ["connection-health"],
-    queryFn: () => api<{ status: string }>("/health/ready"),
-    enabled: desktop && open,
-    staleTime: 10_000,
-    retry: false,
-  });
+  const health = useConnectionHealth(desktop && open);
   const connect = useMutation({
-    mutationFn: () => connectServer(server.trim()),
-    onSuccess: async () => {
-      // Cancel old-server queries before removing cached profiles and sessions.
+    mutationFn: async () => {
       await client.cancelQueries();
+      return connectServer(server.trim());
+    },
+    onMutate: () => setSwitching(true),
+    onSuccess: next => {
+      if (next.generation === connection.data?.generation) {
+        setSwitching(false);
+        setEditing(false);
+        void health.refetch();
+        return;
+      }
+      // Clear all cached data and page state before binding to the new session.
       client.clear();
       window.location.hash = "/";
       window.location.reload();
     },
+    onError: () => setSwitching(false),
   });
   function close() {
     if (connect.isPending) return;
@@ -64,6 +115,7 @@ export function DesktopConnection({ className = "desktop-settings", label = "Н�
               <div><strong>Рабочая платформа</strong><span>{health.isError ? "Нет связи с сервером" : health.isPending ? "Проверяем доступность…" : "Сервер доступен"}</span></div>
               {health.isError ? <Unplug size={18} /> : health.isPending ? <LoaderCircle size={18} className="spin" /> : <Check size={18} />}
             </div>
+            <Button type="button" variant="outline" disabled={health.isFetching || connect.isPending} onClick={() => void health.refetch()}><RefreshCw size={14} />Проверить подключение</Button>
             {connection.isError && <div role="alert" className="notice notice-error">Не удалось прочитать настройки. <button type="button" className="text-link" onClick={() => void connection.refetch()}>Повторить</button></div>}
             {!editing ? (
               <>
@@ -96,14 +148,15 @@ export function DesktopConnection({ className = "desktop-settings", label = "Н�
 }
 
 export function ConnectionUnavailable({ checking, onRetry }: { checking: boolean; onRetry: () => void }) {
+  const health = useConnectionHealth(false);
   return (
     <main className="connection-unavailable">
       <div className="connection-recovery">
         <span className="connection-recovery-icon"><Unplug size={29} /></span>
-        <div className="eyebrow">Хрюкерсы CDP</div>
+        <div className="eyebrow">NEXA</div>
         <h1>Не удалось подключиться</h1>
         <p>Платформа сейчас недоступна. Проверьте подключение к сети и попробуйте ещё раз.</p>
-        <Button onClick={onRetry} disabled={checking}><RefreshCw size={16} className={checking ? "spin" : ""} />{checking ? "Подключаемся…" : "Повторить"}</Button>
+        <Button onClick={() => { void health.refetch(); onRetry(); }} disabled={checking}><RefreshCw size={16} className={checking ? "spin" : ""} />{checking ? "Подключаемся…" : "Повторить"}</Button>
         <DesktopConnection label="Настройки подключения" />
       </div>
     </main>
@@ -114,14 +167,13 @@ export function ExportDownload({ id, url }: { id: string; url: string }) {
   const download = useMutation({ mutationFn: () => saveExport(id) });
   return (
     <>
-      <a className="text-link" href={url} download onClick={(event) => {
-        if (desktop) { event.preventDefault(); if (!download.isPending) download.mutate(); }
-      }} aria-busy={download.isPending}>
+      {desktop ? <button type="button" className="text-link" disabled={download.isPending} onClick={() => download.mutate()} aria-busy={download.isPending}>
         {download.isPending ? <LoaderCircle size={15} className="spin" /> : <ArrowDownToLine size={15} />}
         Скачать CSV
-      </a>
+      </button> : <a className="text-link" href={url} download><ArrowDownToLine size={15} /> Скачать CSV</a>}
       {download.error && <small role="alert">{download.error.message}</small>}
-      {download.data === true && <small role="status">CSV сохранён</small>}
+      {!download.isPending && download.data === true && <small role="status">CSV сохранён</small>}
+      {!download.isPending && download.data === false && <small role="status">Сохранение отменено. Выгрузку можно скачать повторно.</small>}
     </>
   );
 }

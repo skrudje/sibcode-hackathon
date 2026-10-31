@@ -25,7 +25,7 @@ CATALOG = [
 
 def prepare():
     from app.core.config import ROOT
-    manifest = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    manifest = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     mall_id = UUID(manifest['ids']['mall'])
     jobs = []
     with SessionLocal.begin() as db:

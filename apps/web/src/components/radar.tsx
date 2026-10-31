@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ArrowUpRight, CircleAlert, LoaderCircle, Radar as RadarIcon, Send, ShieldCheck, Users } from "lucide-react";
@@ -21,6 +21,7 @@ function ErrorNotice({ error }: { error: unknown }) {
 
 export function VisitRadar() {
   const navigate = useNavigate();
+  const inspector = useRef<HTMLElement>(null);
   const [options, setOptions] = useState(defaults);
   const [selected, setSelected] = useState("");
   const [offset, setOffset] = useState(0);
@@ -35,11 +36,21 @@ export function VisitRadar() {
   const audience = useQuery({ queryKey: ["radar-audience", chosen?.id, options, offset], enabled: !!chosen,
     queryFn: () => api<Schema<"RadarAudience">>(`/radar/opportunities/${chosen!.id}?${query}&limit=10&offset=${offset}`), refetchInterval: 10_000 });
   const incomplete = report.data?.nodes.filter(node => node.coverage_status !== "ready") ?? [];
+  useLayoutEffect(() => {
+    const panel = inspector.current, workspace = panel?.closest("main");
+    if (!panel || !workspace) return;
+    const fit = () => panel.style.setProperty("--radar-inspector-height", `${Math.max(280, workspace.getBoundingClientRect().bottom - panel.getBoundingClientRect().top - 10)}px`);
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(workspace);
+    workspace.addEventListener("scroll", fit, { passive: true });
+    return () => { observer.disconnect(); workspace.removeEventListener("scroll", fit); };
+  }, [chosen?.id, incomplete.length]);
   function choose(id: string) { setSelected(id); setOffset(0); }
   return (
     <>
       <div className="page-heading">
-        <div><h1>Радар новых визитов</h1><p>Наблюдаемые связи арендаторов → проверенная аудитория → кампания</p></div>
+        <div><span className="eyebrow">НОВЫЕ ВОЗМОЖНОСТИ</span><h1>Радар новых визитов</h1><p>Наблюдаемые связи арендаторов → проверенная аудитория → кампания</p></div>
 
       </div>
       <div className="radar-toolbar">
@@ -76,14 +87,16 @@ export function VisitRadar() {
           </section>
 
         </div>
-        <aside className="panel radar-inspector" aria-label="Проверка возможности">
+        <aside ref={inspector} className="panel radar-inspector" aria-label="Проверка возможности">
           {chosen ? <>
             <div className="panel-heading"><div><span className="radar-kicker">ВОЗМОЖНОСТЬ ДЛЯ ПРИГЛАШЕНИЯ</span><h2>{chosen.destination.name}</h2><p>Из: {chosen.origins.map(node => node.name).join(" + ")}</p></div></div>
             <div className="radar-inspector-body">
+              <div className="radar-highlights">
+              <div className="radar-lift"><strong>{decimal(chosen.lift)}×</strong><span>отношение наблюдаемых частот</span></div>
               <div className="radar-result"><div><strong>{chosen.candidate_count}</strong><span>клиентов в аудитории <HelpTip term="Новая аудитория" /></span></div><Users size={25} /></div>
+              </div>
               <div className="radar-comparison"><div><span>В выбранной группе</span><strong>{percent(chosen.conditional_rate)}</strong><small>{chosen.shared_count} из {chosen.cohort_count}</small></div><div><span>В общей активной базе</span><strong>{percent(chosen.baseline_rate)}</strong><small>{chosen.destination_count} из {chosen.population_count}</small></div></div>
-              <div className="radar-lift"><strong>{decimal(chosen.lift)}×</strong><span>отношение наблюдаемых частот. Связь требует проверки в кампании; это не вероятность покупки.</span></div>
-              <details className="radar-explanation"><summary>Как получен результат</summary><p>{chosen.explanation}</p><p>Единица расчёта — уникальный клиент. Повторные взаимодействия не увеличивают число общих клиентов.</p></details>
+              <details className="radar-explanation"><summary>Как получен результат</summary><p>{chosen.explanation}</p><p>Единица расчёта — уникальный клиент. Повторные взаимодействия не увеличивают число общих клиентов. Связь требует проверки в кампании; это не вероятность покупки.</p></details>
               <div className="radar-coverage"><ShieldCheck size={16} /><div><strong>Полнота истории заявлена источниками <HelpTip term="Полнота истории" /></strong><small>{when(chosen.window_start)} — {when(chosen.as_of)} · КРСК</small><small>У кандидатов нет зарегистрированного взаимодействия в {chosen.destination.name} за это окно.</small></div></div>
               <div className="radar-audience-heading"><h3>Проверить клиентов</h3><span>{audience.data?.total ?? "—"}</span></div>
               <ErrorNotice error={audience.error} />
@@ -113,16 +126,16 @@ function RadarMap({ nodes, items, chosen, onChoose }: { nodes: Schema<"RadarNode
     if (from && to && (!edges.has(key) || item.id === chosen?.id)) edges.set(key, { from, to, item, selected: item.id === chosen?.id });
   }
   return <svg viewBox="0 0 900 540" className="radar-map" role="group" aria-label="Связи арендаторов">
-    <defs><marker id={`${markerId}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a9bcb3" /></marker><marker id={`${markerId}-active`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#218764" /></marker></defs>
-    <circle cx="450" cy="270" r="130" fill="none" stroke="#e8eeeb" strokeDasharray="3 7" />
-    <circle cx="450" cy="270" r="68" fill="none" stroke="#eef2f0" />
+    <defs><marker id={`${markerId}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#a6afc3" /></marker><marker id={`${markerId}-active`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" /></marker></defs>
+    <circle cx="450" cy="270" r="130" fill="none" stroke="#dfe3ed" strokeDasharray="3 7" />
+    <circle cx="450" cy="270" r="68" fill="none" stroke="#e9ecf3" />
     {[...edges.values()].sort((a,b) => Number(a.selected)-Number(b.selected)).map(({from,to,item,selected}) => {
       const dx=to.x-from.x,dy=to.y-from.y,distance=Math.hypot(dx,dy), ux=dx/distance,uy=dy/distance;
       const x1=from.x+ux*64,y1=from.y+uy*31,x2=to.x-ux*72,y2=to.y-uy*36;
       const curve=`M ${x1} ${y1} Q ${(x1+x2)/2-uy*24} ${(y1+y2)/2+ux*24} ${x2} ${y2}`;
-      return <g key={`${from.tenant_id}:${to.tenant_id}`} role="button" tabIndex={0} aria-label={`Связь ${from.name} → ${to.name}`} className={`radar-map-edge${selected ? " active" : ""}`} onClick={() => onChoose(item.id)} onKeyDown={event => { if(event.key==="Enter" || event.key===" "){event.preventDefault();onChoose(item.id);} }}><title>{label(item)} · {item.candidate_count} клиентов</title><path d={curve} fill="none" stroke="transparent" strokeWidth="20" /><path className="radar-edge-line" d={curve} fill="none" stroke={selected ? "#218764" : "#b8c9c0"} strokeWidth={selected ? 3 : 1.5} markerEnd={`url(#${markerId}-${selected ? "active" : "arrow"})`} /></g>;
+      return <g key={`${from.tenant_id}:${to.tenant_id}`} role="button" tabIndex={0} aria-label={`Связь ${from.name} → ${to.name}`} className={`radar-map-edge${selected ? " active" : ""}`} onClick={() => onChoose(item.id)} onKeyDown={event => { if(event.key==="Enter" || event.key===" "){event.preventDefault();onChoose(item.id);} }}><title>{label(item)} · {item.candidate_count} клиентов</title><path d={curve} fill="none" stroke="transparent" strokeWidth="20" /><path className="radar-edge-line" d={curve} fill="none" stroke={selected ? "var(--accent)" : "#a6afc3"} strokeWidth={selected ? 6 : 2} markerEnd={`url(#${markerId}-${selected ? "active" : "arrow"})`} /></g>;
     })}
-    {positions.map(node => <g key={node.tenant_id} transform={`translate(${node.x-78},${node.y-29})`} className={`radar-map-node${chosen?.destination.tenant_id===node.tenant_id ? " destination" : ""}`}><title>{node.name} · {coverageNames[node.coverage_status]}</title><rect width="156" height="58" rx="7" /><circle cx="18" cy="21" r="4" fill={node.coverage_status === "ready" ? "#369678" : "#c89b51"} /><text x="30" y="25" className="radar-node-name">{node.name.length > 18 ? node.name.slice(0,17)+"…" : node.name}</text><text x="14" y="44" className="radar-node-category">{node.category}</text></g>)}
+    {positions.map(node => <g key={node.tenant_id} transform={`translate(${node.x-78},${node.y-29})`} className={`radar-map-node${chosen?.destination.tenant_id===node.tenant_id ? " destination" : ""}`}><title>{node.name} · {coverageNames[node.coverage_status]}</title><rect width="156" height="58" rx="10" /><circle cx="18" cy="21" r="4" fill={node.coverage_status === "ready" ? "#b0cf27" : "#cf8b27"} /><text x="30" y="25" className="radar-node-name">{node.name.length > 18 ? node.name.slice(0,17)+"…" : node.name}</text><text x="14" y="44" className="radar-node-category">{node.category}</text></g>)}
     {!nodes.length && <text x="350" y="180" textAnchor="middle" className="radar-node-category">Источники ещё не подключены</text>}
   </svg>;
 }

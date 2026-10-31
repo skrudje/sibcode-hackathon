@@ -17,7 +17,7 @@ def test_audience_name_preserves_window_with_long_tenant_names():
 
 def test_workspace_renames_only_untouched_legacy_segments():
     prepare()
-    manifest = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())
+    manifest = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())
     mall_id = UUID(manifest['ids']['mall'])
     def segment_id(index):
         tenant_id = UUID(manifest['sources'][index]['tenant_id']) if index < 3 else uuid5(mall_id, f'workspace-tenant:{index}')

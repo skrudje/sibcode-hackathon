@@ -55,7 +55,7 @@ def test_discovery_evidence_deduplication_and_contract(client, radar_data):
         db.add(Event(mall_id=event.mall_id, customer_id=event.customer_id, tenant_id=event.tenant_id, source_id=event.source_id,
             external_event_id='another-transaction-same-client', event_type='visit', occurred_at=event.occurred_at, payload_hash='d'*64))
     assert client.get('/api/v1/radar').json()['opportunities'][0]['shared_count'] == 25
-    spec = json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+    spec = json.loads((ROOT / 'docs/api/openapi.json').read_text())
     registry = Registry().with_resource('urn:radar:api', Resource.from_contents(spec, default_specification=DRAFT202012))
     for data, schema in [(report, 'RadarReport'), (detail, 'RadarAudience')]:
         Draft202012Validator({'$ref': f'urn:radar:api#/components/schemas/{schema}'}, registry=registry).validate(data)
@@ -117,7 +117,7 @@ def test_parallel_launch_creates_one_set(client, radar_data):
 def test_coverage_offer_and_stale_selection(client, radar_data):
     item = radar_data['opportunities'][0]
     body = body_for(item)
-    ids = json.loads((ROOT / 'demo/templates/demo_scenario.json').read_text())['ids']
+    ids = json.loads((ROOT / 'apps/api/fixtures/demo_scenario.json').read_text())['ids']
     with SessionLocal() as db:
         original = db.get(Source, UUID(ids['source_c'])).coverage_from
     assert client.patch(f'/api/v1/sources/{ids["source_c"]}/coverage', json={'coverage_from': (Clock.now()-timedelta(days=30)).isoformat()}).status_code == 200

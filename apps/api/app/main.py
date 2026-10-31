@@ -516,7 +516,7 @@ def demo_file(name: str, user: CurrentUser):
     return FileResponse(settings.path('demo_dir') / name, filename=name)
 
 
-app.openapi = lambda: json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+app.openapi = lambda: json.loads((ROOT / 'docs/api/openapi.json').read_text())
 
 
 def radar_options(lookback_days: Annotated[int, Query(ge=1, le=365)] = 90,

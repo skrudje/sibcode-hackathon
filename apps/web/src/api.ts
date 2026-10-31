@@ -41,9 +41,9 @@ export async function api<T>(
     if (response.status === 401 && !path.startsWith("/auth"))
       window.dispatchEvent(new Event("session-expired"));
     throw new ApiError(
-      payload?.error.message ?? "Не удалось связаться с сервером",
+      payload?.error?.message ?? "Не удалось связаться с сервером",
       response.status,
-      payload?.error.code ?? "network_error",
+      payload?.error?.code ?? "network_error",
     );
   }
   if (response.status === 204) return undefined as T;
@@ -93,6 +93,8 @@ export const reasonNames: Record<string, string> = {
 };
 
 export async function uploadFile(source: Source, file: Blob, filename: string) {
+  if (file.size > 10 * 1024 * 1024)
+    throw new Error("Максимальный размер файла — 10 MiB");
   const form = new FormData();
   form.append("file", file, filename);
   return api<ImportJob>(`/sources/${source.id}/imports`, {

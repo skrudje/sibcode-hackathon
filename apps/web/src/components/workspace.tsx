@@ -1,14 +1,14 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useIsFetching, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowRight, Cable, Database, GitBranch, HelpCircle, LayoutDashboard, Link2,
-  LoaderCircle, LogOut, PanelLeft, Radar, RefreshCw, Search, Send, Sparkles, Users,
+  ArrowRight, Building2, Cable, Database, GitBranch, HelpCircle, LayoutDashboard,
+  LoaderCircle, LogOut, PanelTop, Radar, RefreshCw, Search, Send, Sparkles, Users,
 } from "lucide-react";
-import { api } from "../api";
 import { desktop } from "../transport";
-import { DesktopConnection } from "./desktop";
+import { DesktopConnection, useConnectionHealth } from "./desktop";
 import { Dialog } from "./ui/dialog";
+import { NexaLogo } from "./brand";
 
 export const workspaceLinks = [
   { to: "/", label: "Обзор", description: "Профили, события и последние загрузки", icon: LayoutDashboard },
@@ -39,16 +39,11 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
   const location = useLocation();
   const navigate = useNavigate();
   const content = useRef<HTMLElement>(null);
+  const navigation = useRef<HTMLElement>(null);
   const [collapsed, setCollapsed] = useState(savedSidebar);
   const [commands, setCommands] = useState(false);
   const fetching = useIsFetching({ predicate: (q) => q.queryKey[0] !== "connection-health" });
-  const health = useQuery({
-    queryKey: ["connection-health"],
-    queryFn: ({ signal }) => api<{ status: string }>("/health/ready", { signal }),
-    refetchInterval: 30_000,
-    staleTime: 10_000,
-    retry: false,
-  });
+  const health = useConnectionHealth();
   const active = workspaceLinks.find((link) => link.to === "/"
     ? location.pathname === "/" : location.pathname.startsWith(link.to));
   const Icon = active?.icon ?? Users;
@@ -56,7 +51,10 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
   useEffect(() => {
     try { localStorage.setItem(sidebarKey, String(collapsed)); } catch { /* Optional preference. */ }
   }, [collapsed]);
-  useEffect(() => { content.current?.scrollTo({ top: 0 }); }, [location.pathname]);
+  useEffect(() => {
+    content.current?.scrollTo({ top: 0 });
+    navigation.current?.querySelector('.active')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [location.pathname]);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;
@@ -85,47 +83,29 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
 
   return (
     <div className={`app-shell${collapsed ? " sidebar-collapsed" : ""}`}>
-      <aside className="sidebar" aria-label="Разделы платформы">
-        <Link to="/" className="brand" title="Хрюкерсы CDP — обзор">
-          <span className="brand-icon"><Link2 size={20} /></span>
-          <span className="brand-name">Хрюкерсы <small>CDP</small></span>
+      <header className="app-header" aria-label="Разделы платформы">
+        <Link to="/" className="brand" title="NEXA — обзор платформы">
+          <NexaLogo />
         </Link>
-        <div className="mall-context" title="ТЦ «Орбита» · Управляющая компания">
-          <span className="mall-icon">О</span>
-          <div><strong>ТЦ «Орбита»</strong><small>Управляющая компания</small></div>
-        </div>
-        <div className="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav aria-label="Основная навигация">
+        <nav ref={navigation} aria-label="Основная навигация">
           {workspaceLinks.map(({ to, label, icon: NavIcon }, index) => (
             <NavLink key={to} to={to} end={to === "/"} title={`${label} · Alt+${index + 1}`}
               aria-label={label} className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
-              <NavIcon size={17} /><span>{label}</span><kbd>{index + 1}</kbd>
+              <NavIcon size={16} /><span>{to === "/sources" ? "Источники" : to === "/radar" ? "Радар" : label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <DesktopConnection className="nav-link" />
-          <button className="nav-link" aria-label="Как работает платформа" onClick={onHelp} title="Как работает платформа">
-            <HelpCircle size={17} /><span>Справка</span>
-          </button>
-          <div className="account">
-            <span className="avatar avatar-user" aria-hidden>МК</span>
-            <div><strong>{role === "admin" ? "Администратор" : "Маркетолог УК"}</strong><span title={email}>{email}</span></div>
-            <button className="icon-button" aria-label="Выйти" title="Выйти" disabled={loggingOut} onClick={onLogout}>
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </aside>
+        <span className="mall-context" title="ТЦ «Орбита» · Управляющая компания"><Building2 size={15} />ТЦ ОРБИТА</span>
+      </header>
       <div className="workspace">
         <header className="topbar">
           <div className="toolbar-section">
             <button className="icon-button sidebar-toggle" onClick={() => setCollapsed((value) => !value)}
               aria-expanded={!collapsed} aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"} title="Меню · Ctrl+B">
-              <PanelLeft size={17} />
+              <PanelTop size={17} />
             </button>
             <span className="toolbar-divider" />
-            <span className="section-title"><Icon size={16} />{active?.label ?? "Профиль клиента"}</span>
+            <span className="section-title"><Icon size={16} /><span>NEXA <span className="breadcrumb-divider">/</span> {active?.label ?? "Профиль клиента"}</span></span>
           </div>
           <div className="toolbar-section">
             <button className="command-trigger" onClick={() => setCommands(true)} aria-label="Быстрый переход" aria-keyshortcuts="Control+k Meta+k">
@@ -135,6 +115,11 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
               aria-label="Обновить данные" title="Обновить данные текущего раздела">
               <RefreshCw size={15} className={fetching ? "spin" : ""} /><span>Обновить</span>
             </button>
+            <DesktopConnection className="toolbar-settings" />
+            <button className="icon-button" aria-label="Как работает платформа" onClick={onHelp} title="Справка"><HelpCircle size={17} /></button>
+            <span className="toolbar-divider" />
+            <div className="account" title={email}><span className="avatar avatar-user" aria-hidden="true">{role === "admin" ? "АД" : "МК"}</span><span>{role === "admin" ? "Администратор" : "Маркетолог"}</span></div>
+            <button className="icon-button" aria-label="Выйти" title="Выйти" disabled={loggingOut} onClick={onLogout}><LogOut size={16} /></button>
           </div>
         </header>
         <main className={`main${location.pathname === "/customers" ? " main-records" : ""}`} ref={content} id="workspace-content" tabIndex={-1}>{children}</main>
@@ -147,7 +132,7 @@ export function Workspace({ email, role, onHelp, onLogout, loggingOut, children 
         </div>
         <div className="statusbar-group statusbar-meta">
           {fetching > 0 && <span className="fetch-status"><LoaderCircle size={12} className="spin" /> Обновление…</span>}
-          <span>КРСК · UTC+7</span><span>{desktop ? "Desktop" : "Browser"} · 0.1.0</span>
+          <span>{email}</span><span>КРСК · UTC+7</span><span>NEXA · {desktop ? "Desktop" : "Browser"}</span>
         </div>
       </footer>
       {commands && <QuickSwitch onClose={() => setCommands(false)} />}

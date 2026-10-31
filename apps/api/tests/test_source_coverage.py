@@ -26,7 +26,7 @@ def endpoint(item):
 
 
 def contract(schema, value):
-    spec = json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+    spec = json.loads((ROOT / 'docs/api/openapi.json').read_text())
     registry = Registry().with_resource('urn:coverage:openapi', Resource.from_contents(spec, default_specification=DRAFT202012))
     Draft202012Validator({'$ref': f'urn:coverage:openapi#/components/schemas/{schema}'}, registry=registry).validate(value)
 
@@ -174,7 +174,7 @@ def test_coverage_change_recalculates_segment_and_recommendation_without_changin
 
 
 def test_coverage_api_contract():
-    spec = json.loads((ROOT / 'docs/spec/02_OPENAPI.json').read_text())
+    spec = json.loads((ROOT / 'docs/api/openapi.json').read_text())
     validate(spec)
     assert spec['paths']['/api/v1/sources/{source_id}/coverage']['patch']['operationId'] == 'updateSourceCoverage'
     contract('SourceCoveragePatch', {'covered_event_types': []})

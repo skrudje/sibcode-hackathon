@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Hryukers CDP",
+  "productName": "NEXA",
   "version": "0.1.0",
   "identifier": "ru.hryukers.cdp",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Хрюкерсы · Клиентская платформа",
+        "title": "NEXA · Клиентская платформа",
         "width": 1440,
         "height": 960,
         "minWidth": 900,
