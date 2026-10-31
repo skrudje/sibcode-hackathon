@@ -33,7 +33,7 @@ jobs:
           POSTGRES_DB: hryukers_test
         ports: ['55432:5432']
         options: >-
-          --health-cmd 'pg_isready -U hryukers -d hryukers_test'
+          --health-cmd "pg_isready -U hryukers -d hryukers_test"
           --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
       - uses: actions/checkout@v7
