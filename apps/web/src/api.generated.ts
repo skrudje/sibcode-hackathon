@@ -175,7 +175,7 @@ export interface paths {
         put?: never;
         /**
          * Поставить CSV/XLSX в обработку
-         * @description Только crm_csv/pos_xlsx. Формат должен соответствовать источнику. Максимум 10 MiB. Проверка заголовков выполняется worker: ошибки структуры сохраняются в failure_code=invalid_file_schema и failure_message задания с перечислением отсутствующих и повторяющихся колонок.
+         * @description Для admin/marketer. contacts принимает CSV и XLSX с phone/email/time; исторические crm_csv/pos_xlsx принимают свой формат. Максимум 10 MiB.
          */
         post: operations["createFileImport"];
         delete?: never;
@@ -704,7 +704,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Проверить аудиторию без сохранения */
+        /**
+         * Проверить аудиторию без сохранения
+         * @description Только роли marketer/admin. Представителю бренда доступ запрещён.
+         */
         post: operations["previewWizardAudience"];
         delete?: never;
         options?: never;
@@ -721,7 +724,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Предпросмотр контактов до создания кампании */
+        /**
+         * Предпросмотр контактов до создания кампании
+         * @description Только роли marketer/admin. Представителю бренда доступ запрещён.
+         */
         post: operations["previewWizardCampaign"];
         delete?: never;
         options?: never;
@@ -738,8 +744,95 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Сохранить кампанию из мастера */
+        /**
+         * Сохранить кампанию из мастера
+         * @description Только роли marketer/admin. Представителю бренда доступ запрещён.
+         */
         post: operations["prepareWizardCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brand Context
+         * @description Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ.
+         */
+        get: operations["getBrandContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/imports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Brand Preview
+         * @description Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ. Файл читается в памяти. Без mapping возвращаются колонки; с mapping (JSON-строка ColumnMapping) выполняется проверка выбранных полей без сохранения событий.
+         */
+        post: operations["previewBrandImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brand Imports
+         * @description Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ.
+         */
+        get: operations["listBrandImports"];
+        put?: never;
+        /**
+         * Brand Upload
+         * @description Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ. Сохраняется только CSV phone/email/time. Обработка идёт обычным worker; API cursor и полнота истории не меняются.
+         */
+        post: operations["createBrandImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/brand/imports/{job_id}/errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Brand Errors
+         * @description Только роль brand. Магазин и источник определяются по серверной привязке пользователя внутри его ТЦ.
+         */
+        get: operations["getBrandImportErrors"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -777,9 +870,10 @@ export interface components {
             /** Format: email */
             email: string;
             /** @enum {string} */
-            role: "marketer" | "admin";
+            role: "marketer" | "admin" | "brand";
             /** Format: uuid */
             mall_id: string;
+            tenant_id: string | null;
         };
         LoginRequest: {
             /** Format: email */
@@ -1541,9 +1635,11 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "admin" | "marketer";
+            role: "admin" | "marketer" | "brand";
             /** Is Active */
             is_active: boolean;
+            /** Tenant Id */
+            tenant_id: string | null;
         };
         /** TeamPage */
         TeamPage: {
@@ -1581,9 +1677,14 @@ export interface components {
              * Role
              * @enum {string}
              */
-            role: "marketer" | "admin";
+            role: "marketer" | "admin" | "brand";
             /** Is Active */
             is_active: boolean;
+            /**
+             * Tenant Id
+             * @default null
+             */
+            tenant_id: string | null;
         };
         /** UserWrite */
         UserWrite: {
@@ -1596,7 +1697,12 @@ export interface components {
              * @default marketer
              * @enum {string}
              */
-            role: "marketer" | "admin";
+            role: "marketer" | "admin" | "brand";
+            /**
+             * Tenant Id
+             * @default null
+             */
+            tenant_id: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1832,6 +1938,97 @@ export interface components {
             ineligible_count: number;
             /** Unknown Count */
             unknown_count: number;
+        };
+        /** Body_brand_preview_api_v1_brand_imports_preview_post */
+        Body_brand_preview_api_v1_brand_imports_preview_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping?: string | null;
+        };
+        /** Body_brand_upload_api_v1_brand_imports_post */
+        Body_brand_upload_api_v1_brand_imports_post: {
+            /** File */
+            file: string;
+            /** Mapping */
+            mapping: string;
+        };
+        /** BrandContext */
+        BrandContext: {
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Tenant Name */
+            tenant_name: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Timezone */
+            timezone: string;
+        };
+        /** ColumnMapping */
+        ColumnMapping: {
+            /** Phone */
+            phone?: number | null;
+            /** Email */
+            email?: number | null;
+            /** Time */
+            time: number;
+        };
+        /** FilePreview */
+        FilePreview: {
+            /** Columns */
+            columns: components["schemas"]["ImportColumn"][];
+            /** Total Rows */
+            total_rows: number;
+            /** Sheet Name */
+            sheet_name: string | null;
+            /** Encoding */
+            encoding: string | null;
+            /** Timezone */
+            timezone: string;
+            mapping: components["schemas"]["ColumnMapping"] | null;
+            /** Valid Rows */
+            valid_rows: number | null;
+            /** Invalid Rows */
+            invalid_rows: number | null;
+            /** Sample */
+            sample: components["schemas"]["MappingSample"][];
+            /** Errors */
+            errors: components["schemas"]["MappingError"][];
+        };
+        /** ImportColumn */
+        ImportColumn: {
+            /** Index */
+            index: number;
+            /** Name */
+            name: string;
+            /** Examples */
+            examples: string[];
+        };
+        /** MappingError */
+        MappingError: {
+            /** Row Number */
+            row_number: number;
+            /** Message */
+            message: string;
+        };
+        /** MappingSample */
+        MappingSample: {
+            /** Row Number */
+            row_number: number;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Time */
+            time: string | null;
+            /** Error */
+            error: string | null;
         };
     };
     responses: never;
@@ -5191,6 +5388,428 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignWizardResult"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBrandContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandContext"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    previewBrandImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_brand_preview_api_v1_brand_imports_preview_post"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePreview"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Файл превышает лимит */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Поддерживаются CSV и XLSX */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    listBrandImports: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJobPage"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    createBrandImport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_brand_upload_api_v1_brand_imports_post"];
+            };
+        };
+        responses: {
+            /** @description Успех */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            /** @description Нет сессии */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Доступ запрещён */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Не найдено */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Конфликт */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Файл превышает лимит */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Поддерживаются CSV и XLSX */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Ошибка входных данных */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Зависимость недоступна */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getBrandImportErrors: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успех */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportErrorPage"];
                 };
             };
             /** @description Нет сессии */

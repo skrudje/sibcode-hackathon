@@ -1,0 +1,47 @@
+.brand-portal { height: 100dvh; overflow: auto; background: #f3f6f4; color: #35483d; }
+.brand-portal-header { min-height: 80px; background: white; border-bottom: 1px solid #dfe8e2; padding: 16px max(24px, calc((100vw - 1180px) / 2)); display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.brand-portal-identity, .brand-portal-account { display: flex; align-items: center; gap: 14px; }
+.brand-portal-identity strong { display: block; font-size: 17px; }
+.brand-portal-identity small { display: block; margin-top: 4px; font-size: 12px; color: #7b8d81; }
+.brand-portal-icon { width: 46px; height: 46px; background: #e9f4ee; border: 1px solid #d6e9dd; border-radius: 14px; display: grid; place-items: center; color: #19825e; }
+.brand-portal-account { font-size: 12px; color: #718277; }
+.brand-portal-account .desktop-settings { width: auto; }
+.brand-portal-content { max-width: 1180px; margin: 0 auto; padding: 32px 24px 56px; display: flex; flex-direction: column; gap: 22px; }
+.brand-portal-content .page-heading { margin-bottom: 2px; }
+.brand-portal-content .page-heading h1 { font-size: 28px; }
+.brand-portal-content .page-heading p { font-size: 13px; max-width: 700px; line-height: 1.6; }
+.brand-portal-content .panel-heading h2 { font-size: 15px; }
+.brand-portal-content .panel-heading p { line-height: 1.6; font-size: 12px; }
+.brand-upload-body, .brand-mapping-footer { padding: 20px; }
+.brand-file-picker { position: relative; border: 1.5px dashed #b5cdbf; border-radius: 12px; padding: 28px 20px; background: #f8fcf9; display: flex; align-items: center; flex-direction: column; gap: 11px; text-align: center; cursor: pointer; color: #22845f; }
+.brand-file-picker:hover { border-color: #22845f; background: #f0f8f3; }
+.brand-file-picker:focus-within { outline: 2px solid #22845f; outline-offset: 3px; }
+.brand-file-picker.disabled { opacity: .6; cursor: wait; }
+.brand-file-picker strong { font-size: 15px; overflow-wrap: anywhere; }
+.brand-file-picker span { font-size: 12px; color: #7b8d81; }
+.brand-file-picker input { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+.brand-privacy { font-size: 12px; line-height: 1.7; color: #7b8d81; margin-top: 14px; }
+.brand-mapping-grid { padding: 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.brand-mapping-grid label { display: flex; flex-direction: column; gap: 9px; font-size: 13px; }
+.brand-mapping-grid select { width: 100%; }
+.brand-mapping-grid small { color: #7b8d81; font-size: 11px; line-height: 1.7; overflow-wrap: anywhere; }
+.brand-mapping-footer { border-top: 1px solid #e6eee8; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.brand-mapping-footer p { font-size: 12px; line-height: 1.8; color: #7b8d81; }
+.brand-preview-counts { display: flex; flex-wrap: wrap; gap: 30px; padding: 18px 20px; border-bottom: 1px solid #e6eee8; font-size: 12px; color: #7b8d81; }
+.brand-preview-counts strong { font-size: 22px; color: #287557; margin-right: 6px; }
+.brand-row-ok { display: inline-flex; align-items: center; gap: 4px; color: #22845f; white-space: nowrap; }
+.brand-portal td { max-width: 320px; overflow-wrap: anywhere; }
+.team-member { flex-wrap: wrap; }
+.team-member .team-tenant { width: 200px; }
+.team-member .team-active { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.team-member .team-active input { width: auto; }
+@media (max-width: 760px) {
+  .brand-portal-header { align-items: flex-start; flex-direction: column; padding: 18px; }
+  .brand-portal-account { width: 100%; flex-wrap: wrap; }
+  .brand-portal-account > span { flex: 1; overflow-wrap: anywhere; }
+  .brand-portal-content { padding: 24px 14px 40px; gap: 16px; }
+  .brand-portal-content .page-heading { gap: 12px; }
+  .brand-portal-content .page-heading h1 { font-size: 23px; }
+  .brand-mapping-grid { grid-template-columns: 1fr; gap: 18px; }
+  .brand-portal-content .table-wrap { max-width: 100%; overflow-x: auto; }
+}
