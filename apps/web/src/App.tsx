@@ -57,6 +57,7 @@ import { VisitRadar } from "./components/radar";
 import { Integrations } from "./components/integrations";
 import { SourceWorkspace } from "./components/source-workspace";
 import { HelpTip } from "./components/ui/help-tip";
+import { NexaLogo } from "./components/brand";
 
 
 function Message({
@@ -264,8 +265,14 @@ function Login({ onLogin }: { onLogin: () => void }) {
   });
   return (
     <div className="login-page">
+      <aside className="login-story">
+        <NexaLogo />
+        <div><span className="eyebrow">ЕДИНАЯ КЛИЕНТСКАЯ ПЛАТФОРМА</span><h1>Больше связей.<br /><mark>Новые возможности.</mark></h1><p>Объединяйте данные арендаторов, узнавайте свою аудиторию и находите следующий шаг для каждого клиента.</p></div>
+        <div className="login-flow" aria-hidden="true"><span><Database size={19} />Данные</span><ArrowRight size={18} /><span><Users size={19} />Профиль</span><ArrowRight size={18} /><span><Sparkles size={19} />Возможности</span></div>
+        <span className="login-team">Хрюкерсы · SibКод 2026</span>
+      </aside>
       <main className="login-form">
-        <div className="login-mark"><span className="brand-icon"><Link2 size={23} /></span><strong>Хрюкерсы</strong><span>CDP</span></div>
+        <div className="login-mark"><span className="login-step">01 / ВХОД</span><ShieldCheck size={21} /></div>
         <h2>Добро пожаловать</h2>
         <p>Войдите в рабочее пространство торгового центра</p>
         <form
@@ -309,7 +316,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
           <ShieldCheck size={15} /> Рабочее пространство торгового центра
         </div>
       </main>
-      <div className="login-version"><span>Клиентская платформа · SibКод 2026 · 0.1.0</span><DesktopConnection /></div>
+      <div className="login-version"><span>NEXA · Клиентская платформа</span><DesktopConnection /></div>
     </div>
   );
 }
@@ -410,6 +417,7 @@ function Overview() {
       "/customers?limit=4",
     );
   const data = summary.data;
+  const contactPercent = data ? new Intl.NumberFormat("ru-RU", { style: "percent", maximumFractionDigits: 1 }).format(data.customer_count ? data.verified_customer_count / data.customer_count : 0) : "—";
   return (
     <>
       <Title
@@ -423,48 +431,13 @@ function Overview() {
         }
       />
       <ErrorMessage error={summary.error} />
-      <div className="metrics">
-        {[
-          {
-            label: "Единых профилей",
-            value: data?.customer_count,
-            icon: Users,
-            hint: "Клиенты всех арендаторов",
-            tone: "blue",
-          },
-          {
-            label: "Записей в истории",
-            value: data?.event_count,
-            icon: GitBranch,
-            hint: "Записи от арендаторов",
-            tone: "purple",
-          },
-          {
-            label: "Профилей с контактами",
-            value: data?.verified_customer_count,
-            icon: ShieldCheck,
-            hint: "Есть корректный телефон или email",
-            tone: "green",
-          },
-          {
-            label: "Источников данных",
-            value: data?.source_count,
-            icon: Database,
-            hint: "CRM, касса и REST API",
-            tone: "orange",
-          },
-        ].map(({ label, value, icon: Icon, hint, tone }) => (
-          <div className="metric" key={label}>
-            <div className="metric-top">
-              <span>{label} <HelpTip term={label === "Единых профилей" ? "Профиль" : label === "Профилей с контактами" ? "Есть контакты" : label === "Источников данных" ? "Источник" : "Взаимодействие"} text={label === "Записей в истории" ? "Зафиксированные контакты с арендатором. Новые записи содержат только телефон, email и время; покупку по ним не определяем." : undefined} /></span>
-              <span className={`metric-icon ${tone}`}>
-                <Icon size={19} />
-              </span>
-            </div>
-            <strong>{value === undefined ? "—" : number(value)}</strong>
-            <small>{hint}</small>
-          </div>
-        ))}
+      <div className="metrics nexa-metrics">
+        <section className="metric metric-hero">
+          <div className="metric-top"><span>Всего профилей в базе <HelpTip term="Профиль" /></span><span className="metric-icon"><Users size={24} /></span></div>
+          <div><strong>{data ? number(data.customer_count) : "—"}</strong><div className="metric-contact-note"><span className="badge badge-green">{contactPercent} с контактами</span><span>{data ? number(data.verified_customer_count) : "—"} профилей с телефоном или email <HelpTip term="Есть контакты" /></span></div></div>
+        </section>
+        <section className="metric metric-events"><div><div className="metric-top">Записей в истории <HelpTip term="Взаимодействие" /></div><strong>{data ? number(data.event_count) : "—"}</strong><small>Взаимодействия с арендаторами</small></div><span className="metric-icon"><GitBranch size={25} /></span></section>
+        <section className="metric metric-sources"><div><div className="metric-top">Источников данных <HelpTip term="Источник" /></div><strong>{data ? number(data.source_count) : "—"}<span> подключено</span></strong><small>Единый формат · API, CSV и Excel</small></div><span className="metric-icon"><Database size={25} /></span></section>
       </div>
       <div className="overview-grid">
         <Panel
@@ -539,13 +512,7 @@ function Overview() {
             >
               <div>
                 <strong>
-                  {data?.customer_count
-                    ? Math.round(
-                        (data.verified_customer_count / data.customer_count) *
-                          100,
-                      )
-                    : 0}
-                  %
+                  {contactPercent}
                 </strong>
                 <span>с контактами</span>
               </div>
@@ -711,8 +678,8 @@ function Customers() {
         )}
       </Panel>
       <Message>
-        Общий клиентский ключ связывает данные источников. Одинаковые имена и
-        email сами по себе не доказывают, что это один человек.
+        Записи объединяются по нормализованному телефону или email внутри ТЦ.
+        Если контакты указывают на разные профили, строка отклоняется с объяснением.
       </Message>
     </>
   );
@@ -760,6 +727,68 @@ function CustomerProfile() {
         </div>
       </div>
       <div className="profile-grid">
+        <div>
+          <Panel
+            title="Контакты и происхождение"
+            subtitle="Сохраняем различия между источниками"
+          >
+            {customer.contact_conflicts.length > 0 && (
+              <div className="panel-padding">
+                <Message error>
+                  Конфликт каналов: {customer.contact_conflicts.join(", ")}.
+                  Выгрузка по конфликтующему каналу будет исключена.
+                </Message>
+              </div>
+            )}
+            <div className="contact-list">
+              {customer.contacts.map((contact) => (
+                <div key={contact.id}>
+                  <span className="contact-icon">
+                    <Mail size={17} />
+                  </span>
+                  <div>
+                    <strong>{contact.value}</strong>
+                    <small>
+                      {contact.channel} ·{" "}
+                      {
+                        sources.data?.items.find(
+                          (s) => s.id === contact.source_id,
+                        )?.name
+                      }
+                    </small>
+                  </div>
+                  {!contact.normalized_value && (
+                    <Badge tone="amber">Проверьте формат</Badge>
+                  )}
+                </div>
+              ))}
+              {!customer.contacts.length && (
+                <p className="muted">Контакты не переданы источниками.</p>
+              )}
+            </div>
+          </Panel>
+          <Panel title="Связи профиля">
+            <div className="identity-list">
+              {customer.external_identities.map((identity) => (
+                <div
+                  key={`${identity.source_id}-${identity.external_customer_id}`}
+                >
+                  <Link2 size={16} />
+                  <div>
+                    <strong>
+                      {
+                        sources.data?.items.find(
+                          (s) => s.id === identity.source_id,
+                        )?.name
+                      }
+                    </strong>
+                    <code>{identity.external_customer_id}</code>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
         <div>
           <Panel
             title="Лента событий"
@@ -823,47 +852,6 @@ function CustomerProfile() {
             )}
           </Panel>
           <Panel
-            title="Контакты и происхождение"
-            subtitle="Сохраняем различия между источниками"
-          >
-            {customer.contact_conflicts.length > 0 && (
-              <div className="panel-padding">
-                <Message error>
-                  Конфликт каналов: {customer.contact_conflicts.join(", ")}.
-                  Выгрузка по конфликтующему каналу будет исключена.
-                </Message>
-              </div>
-            )}
-            <div className="contact-list">
-              {customer.contacts.map((contact) => (
-                <div key={contact.id}>
-                  <span className="contact-icon">
-                    <Mail size={17} />
-                  </span>
-                  <div>
-                    <strong>{contact.value}</strong>
-                    <small>
-                      {contact.channel} ·{" "}
-                      {
-                        sources.data?.items.find(
-                          (s) => s.id === contact.source_id,
-                        )?.name
-                      }
-                    </small>
-                  </div>
-                  {!contact.normalized_value && (
-                    <Badge tone="amber">Проверьте формат</Badge>
-                  )}
-                </div>
-              ))}
-              {!customer.contacts.length && (
-                <p className="muted">Контакты не переданы источниками.</p>
-              )}
-            </div>
-          </Panel>
-        </div>
-        <div>
-          <Panel
             title="Следующий шаг"
             subtitle="Персональная рекомендация"
             className="recommendation-panel"
@@ -908,27 +896,6 @@ function CustomerProfile() {
               </div>
             )}
             <ErrorMessage error={recs.error} />
-          </Panel>
-          <Panel title="Связи профиля">
-            <div className="identity-list">
-              {customer.external_identities.map((identity) => (
-                <div
-                  key={`${identity.source_id}-${identity.external_customer_id}`}
-                >
-                  <Link2 size={16} />
-                  <div>
-                    <strong>
-                      {
-                        sources.data?.items.find(
-                          (s) => s.id === identity.source_id,
-                        )?.name
-                      }
-                    </strong>
-                    <code>{identity.external_customer_id}</code>
-                  </div>
-                </div>
-              ))}
-            </div>
           </Panel>
         </div>
       </div>
@@ -1202,7 +1169,7 @@ function Segments() {
                   </Button>
                 }
               >
-                <div className="condition-summary">
+                <div className="segment-definition"><div className="condition-summary">
                   {segment.definition.include_all.map((c, i) => (
                     <div key={`include-${i}`}>
                       <Badge tone="green">ЕСТЬ</Badge>
@@ -1214,7 +1181,7 @@ function Segments() {
                   ))}
                   {segment.definition.exclude_any.map((c, i) => (
                     <div key={`exclude-${i}`}>
-                      <Badge tone="blue">НЕТ ЗАПИСИ</Badge>
+                      <Badge tone="red">НЕТ ЗАПИСИ</Badge>
                       <span>{tenantName(c.tenant_id)}</span>
                       <small>
                         {c.event_types.map((t) => eventNames[t]).join(" / ")}
@@ -1246,6 +1213,7 @@ function Segments() {
                       <small>{label}{label === "Недостаточно данных" && <HelpTip term="Недостаточно данных" />}</small>
                     </div>
                   ))}
+                </div>
                 </div>
               </Panel>
               <Panel
@@ -1767,34 +1735,14 @@ function Campaigns() {
                 title={campaign.name}
                 subtitle={<>Канал: {campaign.channel.toUpperCase()} · Срез: {when(preview.data?.as_of)} · КРСК <HelpTip term="Дата среза" /></>}
               >
-                <div className="campaign-stats">
-                  <div>
-                    <span>В сегменте <HelpTip term="Сегмент" /></span>
-                    <strong>{preview.data?.base_count ?? "—"}</strong>
-                  </div>
-                  <ArrowRight className="muted" size={23} />
-                  <div>
-                    <span>Готовы к выгрузке <HelpTip term="Выгрузка" /></span>
-                    <strong className="blue-text">
-                      {preview.data?.eligible_count ?? "—"}
-                    </strong>
-                  </div>
-                  <div className="campaign-cta">
-                    <Button
-                      disabled={
-                        mutation.isPending || !preview.data?.eligible_count
-                      }
-                      onClick={() => mutation.mutate()}
-                    >
-                      {mutation.isPending ? (
-                        <LoaderCircle className="spin" size={17} />
-                      ) : (
-                        <ArrowDownToLine size={17} />
-                      )}
-                      Сформировать CSV
-                    </Button>
-                  </div>
+                <div className="campaign-stats campaign-flow">
+                  <div className="campaign-stat"><span>Аудитория сегмента <HelpTip term="Сегмент" /></span><strong>{preview.data?.base_count ?? "—"}</strong><small>профилей в выбранной группе</small></div>
+                  <ArrowRight className="flow-arrow" size={28} />
+                  <div className="campaign-stat campaign-stat-excluded"><span>Исключения <HelpTip term="Выгрузка" /></span><strong>{preview.data ? Math.max(0, preview.data.base_count - preview.data.eligible_count) : "—"}</strong><small>не пройдут проверку контактов</small></div>
+                  <ArrowRight className="flow-arrow" size={28} />
+                  <div className="campaign-stat campaign-stat-ready"><span>Готовы к выгрузке</span><strong>{preview.data?.eligible_count ?? "—"}</strong><small>{campaign.channel.toUpperCase()} · контактов в CSV</small></div>
                 </div>
+                <div className="campaign-export-banner"><div><CircleAlert size={23} /><p><strong>Выгрузка не отправляет сообщения.</strong><span>Готовим список контактов для вашей системы рассылок.</span></p></div><Button disabled={mutation.isPending || !preview.data?.eligible_count} onClick={() => mutation.mutate()}>{mutation.isPending ? <LoaderCircle className="spin" size={17} /> : <ArrowDownToLine size={17} />}Сформировать CSV</Button></div>
                 <div className="exclusions">
                   {preview.data &&
                     Object.entries(preview.data.excluded_counts).map(
