@@ -18,6 +18,7 @@ from app.core.db import dump, engine, json_value, lock
 from app.core.errors import AppError
 from app.models import Campaign, Customer, Event, RecommendationRule, Segment, Source, Tenant
 from app.modules.segments.service import active_rule, scoped
+from app.modules.segments.names import audience_name
 from .contracts import RadarCampaignWrite, RadarOptions
 
 EVENT_TYPES = ('visit', 'purchase', 'booking', 'interaction')
@@ -180,10 +181,12 @@ def launch(mall_id, body: RadarCampaignWrite):
         if offer.destination_tenant_id != opportunity['destination']['tenant_id'] or not active_rule(db, offer):
             raise AppError('radar_offer_unavailable', 'Выберите действующее предложение целевого арендатора', 409)
         definition = opportunity['definition']
-        segment = Segment(id=segment_id, mall_id=mall_id, name=body.name, definition=definition)
+        segment = Segment(id=segment_id, mall_id=mall_id,
+            name=audience_name([origin['name'] for origin in opportunity['origins']],
+                              opportunity['destination']['name'], definition['lookback_days']), definition=definition)
         db.add(segment)
         db.flush()
-        rule = RecommendationRule(id=rule_id, mall_id=mall_id, name=body.name, segment_id=segment.id,
+        rule = RecommendationRule(id=rule_id, mall_id=mall_id, name=f'Правило: {body.name}'[:120], segment_id=segment.id,
             destination_tenant_id=offer.destination_tenant_id, priority=offer.priority,
             offer_title=offer.offer_title, offer_description=offer.offer_description,
             valid_from=offer.valid_from, valid_until=offer.valid_until, is_active=True)

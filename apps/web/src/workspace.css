@@ -290,3 +290,19 @@ tbody tr:hover { background: #f6f9f7; }
   .login-form { padding: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+.audience-summary { padding: 12px 14px; border: 1px solid #dce9e0; border-radius: 7px; background: #f6faf7; color: #365b43; font-size: 12px; line-height: 1.6; }
+.audience-summary > strong { display: block; font-size: 13px; }
+.audience-summary p { margin: 6px 0 0; }
+.audience-summary ul { margin: 8px 0; padding-left: 18px; }
+.audience-summary li { margin: 5px 0; overflow-wrap: anywhere; }
+
+.rule-destination { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid #e0e6ee; border-radius: 7px; background: #f8fafc; overflow-wrap: anywhere; }
+.rule-destination > span { color: #536580; font-size: 12px; font-weight: 600; }
+.rule-destination > strong { color: #263b50; font-size: 14px; }
+.rule-destination > small { color: #71849a; font-size: 11px; }
+.rule-offer-heading { display: grid; gap: 6px; }
+.rule-offer-heading > strong { color: #365b43; font-size: 13px; overflow-wrap: anywhere; }
+.rule-offer-review { padding: 12px 14px; border: 1px solid #ead9ad; border-radius: 7px; background: #fffaf0; color: #6a5122; font-size: 12px; line-height: 1.6; }
+.rule-offer-review p { margin: 6px 0 10px; }
+.rule-offer-review .check-label { align-items: flex-start; }

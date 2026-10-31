@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.core.config import Clock, settings
 from app.core.db import SessionLocal, lock
 from app.models import Customer, ImportJob, Mall, RecommendationRule, Segment, Source, Tenant
+from app.modules.segments.names import audience_name
 
 CATALOG = [
     ('Кинотеатр «Кадр»', 'Кино и развлечения'),
@@ -88,12 +89,17 @@ def prepare():
             if index > 0:
                 sid = uuid5(tenant.id, 'workspace-segment')
                 segment = db.get(Segment, sid)
+                definition = {
+                    'lookback_days': 90, 'include_all': [{'tenant_id': str(tenants[0].id), 'event_types': ['interaction']}],
+                    'exclude_any': [{'tenant_id': str(tenant.id), 'event_types': ['interaction']}],
+                    'require_verified_identity': True, 'require_complete_coverage': True}
+                descriptive_name = audience_name([tenants[0].name], name, definition['lookback_days'])
                 if not segment:
-                    segment = Segment(id=sid, mall_id=mall.id, name=f'Новое знакомство: {name}', definition={
-                        'lookback_days': 90, 'include_all': [{'tenant_id': str(tenants[0].id), 'event_types': ['interaction']}],
-                        'exclude_any': [{'tenant_id': str(tenant.id), 'event_types': ['interaction']}],
-                        'require_verified_identity': True, 'require_complete_coverage': True})
+                    segment = Segment(id=sid, mall_id=mall.id, name=descriptive_name, definition=definition)
                     db.add(segment); db.flush()
+                elif segment.name == f'Новое знакомство: {name}' and segment.definition == definition:
+                    # Upgrade only the original fixture; preserve user edits and history.
+                    segment.name = descriptive_name
                 rid = uuid5(tenant.id, 'workspace-rule')
                 if not db.get(RecommendationRule, rid):
                     db.add(RecommendationRule(id=rid, mall_id=mall.id, name=f'Приглашение: {name}', segment_id=sid,

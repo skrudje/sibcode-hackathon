@@ -56,6 +56,7 @@ import { Workspace } from "./components/workspace";
 import { VisitRadar } from "./components/radar";
 import { Integrations } from "./components/integrations";
 import { SourceWorkspace } from "./components/source-workspace";
+import { AudienceSummary, compatibleDestinations } from "./components/audience-summary";
 import { HelpTip } from "./components/ui/help-tip";
 
 
@@ -1317,10 +1318,7 @@ function RuleForm({
     [values, setValues] = useState({
       name: initial?.name ?? "",
       segment_id: initial?.segment_id ?? segments[0]?.id ?? "",
-      destination_tenant_id:
-        initial?.destination_tenant_id ??
-        tenants.find((t) => t.code === "C")?.id ??
-        "",
+      destination_tenant_id: initial?.destination_tenant_id ?? "",
       priority: initial?.priority ?? 80,
       offer_title: initial?.offer_title ?? "",
       offer_description: initial?.offer_description ?? "",
@@ -1333,12 +1331,28 @@ function RuleForm({
       ),
       is_active: initial?.is_active ?? true,
     });
+  const [offerReviewRequired, setOfferReviewRequired] = useState(false);
+  const [offerReviewed, setOfferReviewed] = useState(false);
+  const segment = segments.find(item => item.id === values.segment_id);
+  const destinations = compatibleDestinations(segment?.definition, tenants);
+  const destination = destinations.find(item => item.id === values.destination_tenant_id)
+    ?? (destinations.length === 1 ? destinations[0] : undefined);
+  const reviewRequired = offerReviewRequired || Boolean(initial && destination && destination.id !== initial.destination_tenant_id);
+
+  function changeSelection(segmentId: string, destinationId: string) {
+    if (destinationId !== (destination?.id ?? "")) {
+      setOfferReviewRequired(Boolean(values.name.trim() || values.offer_title.trim() || values.offer_description.trim()));
+      setOfferReviewed(false);
+    }
+    setValues({ ...values, segment_id: segmentId, destination_tenant_id: destinationId });
+  }
   const mutation = useMutation({
     mutationFn: () =>
       api(`/recommendation-rules${initial ? `/${initial.id}` : ""}`, {
         method: initial ? "PUT" : "POST",
         body: JSON.stringify({
           ...values,
+          destination_tenant_id: destination?.id,
           valid_from: new Date(values.valid_from).toISOString(),
           valid_until: new Date(values.valid_until).toISOString(),
         }),
@@ -1359,7 +1373,7 @@ function RuleForm({
         className="dialog-body"
         onSubmit={(e) => {
           e.preventDefault();
-          mutation.mutate();
+          if (segment && destination && (!reviewRequired || offerReviewed)) mutation.mutate();
         }}
       >
         <label>
@@ -1371,39 +1385,53 @@ function RuleForm({
             maxLength={120}
           />
         </label>
-        <div className="form-grid">
-          <label>
-            Сегмент
-            <select
-              value={values.segment_id}
-              onChange={(e) =>
-                setValues({ ...values, segment_id: e.target.value })
-              }
-              required
-            >
-              {segments.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Куда приглашаем
-            <select
-              value={values.destination_tenant_id}
-              onChange={(e) =>
-                setValues({ ...values, destination_tenant_id: e.target.value })
-              }
-              required
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <label>
+          Кого приглашаем
+          <select
+            value={values.segment_id}
+            onChange={(e) => {
+              const next = segments.find(item => item.id === e.target.value);
+              const available = compatibleDestinations(next?.definition, tenants);
+              const nextDestination = available.find(item => item.id === destination?.id)
+                ?? (available.length === 1 ? available[0] : undefined);
+              changeSelection(e.target.value, nextDestination?.id ?? "");
+            }}
+            required
+          >
+            {segments.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+          </select>
+        </label>
+        {segment && <AudienceSummary title="Условия выбранной аудитории" definition={segment.definition} tenants={tenants} />}
+        {destinations.length === 1 ? (
+          <div className="rule-destination" role="group" aria-label="Куда приглашаем">
+            <span>Куда приглашаем</span>
+            <strong>{destination?.name}</strong>
+            <small>Назначение определено условиями выбранной аудитории.</small>
+          </div>
+        ) : destinations.length > 1 ? (
+          <>
+            <label>
+              Куда приглашаем
+              <select
+                value={destination?.id ?? ""}
+                onChange={event => changeSelection(values.segment_id, event.target.value)}
+                aria-describedby="rule-destination-hint"
+                required
+              >
+                <option value="">Выберите арендатора</option>
+                {destinations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <div className="field-hint" id="rule-destination-hint">Аудитория подходит для нескольких арендаторов. Выберите, чьё предложение использовать.</div>
+          </>
+        ) : (
+          <div className="field-hint" role="status" aria-label="Совместимость назначения">
+            Нет совместимого назначения. Добавьте в разделе «Сегменты» исключение взаимодействия или покупки у арендатора, к которому хотите пригласить клиентов.
+          </div>
+        )}
+        <div className="rule-offer-heading">
+          <strong>{destination ? `Предложение арендатора: ${destination.name}` : "Предложение арендатора"}</strong>
+          <span className="field-hint">Название правила служит для поиска в кабинете. Заголовок и описание относятся к предложению выбранного арендатора.</span>
         </div>
         <label>
           Заголовок предложения
@@ -1427,6 +1455,16 @@ function RuleForm({
             rows={3}
           />
         </label>
+        {reviewRequired && destination && (
+          <div className="rule-offer-review" role="group" aria-label="Проверка предложения" aria-live="polite">
+            <strong>Назначение изменилось: {destination.name}</strong>
+            <p>Название правила и текст предложения сохранены. Проверьте и при необходимости измените их для этого арендатора перед сохранением.</p>
+            <label className="check-label">
+              <input type="checkbox" checked={offerReviewed} onChange={event => setOfferReviewed(event.target.checked)} />
+              Название и текст предложения проверены для {destination.name}
+            </label>
+          </div>
+        )}
         <div className="form-grid">
           <label>
             Действует с
@@ -1476,17 +1514,12 @@ function RuleForm({
             Правило активно
           </label>
         </div>
-        <Message>
-          Взаимодействие с арендатором назначения должно быть исключено в выбранном
-          сегменте. Приоритет задаётся маркетологом и не является вероятностью
-          покупки.
-        </Message>
         <ErrorMessage error={mutation.error} />
         <div className="form-actions">
           <Button type="button" variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button disabled={mutation.isPending}>Сохранить правило</Button>
+          <Button disabled={mutation.isPending || !segment || !destination || (reviewRequired && !offerReviewed)}>Сохранить правило</Button>
         </div>
       </form>
     </Dialog>

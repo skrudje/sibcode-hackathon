@@ -6,6 +6,7 @@ import { api, type Schema, eventNames, number, when } from "../api";
 import { Button } from "./ui/button";
 import { Dialog } from "./ui/dialog";
 import { HelpTip } from "./ui/help-tip";
+import { AudienceSummary } from "./audience-summary";
 import "../radar.css";
 
 type Opportunity = Schema<"RadarOpportunity">;
@@ -140,7 +141,9 @@ function LaunchCampaign({ opportunity, options, onClose }: { opportunity: Opport
   return <Dialog title="Кампания из возможности" onClose={() => { if(!launch.isPending) onClose(); }}><form className="dialog-body" onSubmit={event => { event.preventDefault(); launch.mutate(); }}>
     <div className="notice"><ShieldCheck size={16} /><span>При сохранении сервер заново проверит связь, полноту истории и предложение. Созданный сегмент будет пересчитываться при новых взаимодействиях.</span></div>
     <label>Название кампании<input required maxLength={120} value={name} onChange={event => { setName(event.target.value); setKey(crypto.randomUUID()); }} /></label>
+    <AudienceSummary definition={opportunity.definition} tenants={[...opportunity.origins, opportunity.destination].map(item => ({ id: item.tenant_id, name: item.name }))} />
     <label>Предложение арендатора<select value={offer} onChange={event => { setOffer(event.target.value); setKey(crypto.randomUUID()); }}>{opportunity.offers.map(item => <option key={item.rule_id} value={item.rule_id}>{item.title}</option>)}</select></label>
+    <div className="field-hint">{opportunity.offers.find(item => item.rule_id === offer)?.description}</div>
     <label>Канал выгрузки<select value={channel} onChange={event => { setChannel(event.target.value); setKey(crypto.randomUUID()); }}><option value="email">Email</option><option value="sms">SMS</option></select></label>
     <p>В аудитории сейчас {opportunity.candidate_count} клиентов. Число доступных контактов будет показано в предпросмотре кампании. Сообщения не отправляются.</p>
     <ErrorNotice error={launch.error} />

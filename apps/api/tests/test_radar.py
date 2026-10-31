@@ -69,6 +69,17 @@ def test_campaign_atomicity_idempotency_preview_and_followup(client, radar_data)
     first = client.post('/api/v1/radar/campaigns', json=body)
     assert first.status_code == 201, first.text
     result = first.json()
+    with SessionLocal() as db:
+        campaign = db.get(Campaign, UUID(result['campaign_id']))
+        segment = db.get(Segment, campaign.segment_id)
+        rule = db.get(RecommendationRule, campaign.recommendation_rule_id)
+        assert campaign.name == body['name']
+        assert segment.name.startswith('Аудитория: ')
+        assert 'без записей в' in segment.name and '90 дн.' in segment.name
+        assert rule.name == f"Правило: {body['name']}"
+        assert len({campaign.name, segment.name, rule.name}) == 3
+        assert segment.definition == item['definition']
+        assert rule.offer_title == item['offers'][0]['title']
     repeat = client.post('/api/v1/radar/campaigns', json=body)
     assert repeat.status_code == 200 and repeat.json() == {**result, 'created': False}
     assert client.post('/api/v1/radar/campaigns', json={**body, 'name': 'Другой замысел'}).status_code == 409
@@ -195,3 +206,13 @@ def test_missing_offer_does_not_leave_partial_campaign(client, radar_data):
 @pytest.fixture
 def client(admin_client):
     return admin_client
+
+
+def test_campaign_generated_names_fit_database_limit(client, radar_data):
+    item = radar_data['opportunities'][0]
+    body = {**body_for(item), 'name': 'Я' * 120}
+    response = client.post('/api/v1/radar/campaigns', json=body)
+    assert response.status_code == 201, response.text
+    with SessionLocal() as db:
+        rule = db.get(RecommendationRule, UUID(response.json()['recommendation_rule_id']))
+        assert len(rule.name) == 120 and rule.name.startswith('Правило: ')
