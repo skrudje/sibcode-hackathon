@@ -12,7 +12,7 @@ Tauri 2 упаковывает React-интерфейс в нативное пр
 
 ## Зависимости разработчика
 
-Для всех ОС: Git, Node.js 24 LTS, Rust stable через rustup. Зависимости JS устанавливаются в `apps/web` командой `npm ci`; версии Rust фиксируются в Cargo.lock. Актуальные требования Tauri: https://v2.tauri.app/start/prerequisites/.
+Для всех ОС: Git, Node.js 24 LTS, Rust stable через rustup. Зависимости JS устанавливаются в `apps/web` командой `npm ci`; Rust-зависимости фиксируются в Cargo.lock. Актуальные требования Tauri: https://v2.tauri.app/start/prerequisites/.
 
 Linux (Debian/Ubuntu/Kali):
 
@@ -47,6 +47,21 @@ npm run desktop:build
 Linux собирается на Linux, Windows — на Windows. Результаты находятся в `apps/web/src-tauri/target/release/bundle/`. Windows: NSIS `.exe`. Linux: `.deb` и AppImage. Нельзя считать Windows-сборку проверенной по одному успешному Linux-билду.
 
 Workflow `.github/workflows/desktop.yml` собирает обе платформы и сохраняет установщики как Actions artifacts. Он не публикует GitHub Release автоматически. Проверка подписи Windows и автообновления требуют отдельной настройки для выпуска; прототип не содержит сертификатов.
+
+Первая проверенная сборка обеих платформ: [GitHub Actions, 31 октября 2026](https://github.com/skrudje/sibcode-hackathon/actions/runs/41177948644). Скачайте `hryukers-Linux-x64` или `hryukers-Windows-x64` в разделе Artifacts этого запуска. Для скачивания артефактов GitHub требует вход. Срок хранения — 14 дней; затем соберите приложение из исходников или запустите workflow заново. Артефакты привязаны к конкретному коммиту, поэтому для дальнейшей разработки ориентируйтесь на актуальный `main`.
+
+Linux-окно дополнительно запускалось в изолированном Xvfb-окружении. Windows-установщик собран на Windows runner; ручной показ и работа с системным файловым диалогом на реальном Windows-ноутбуке пока не проверялись.
+
+## Проверка Linux без установки Rust/GTK на хост
+
+Для окружения с Docker есть `infra/desktop.Dockerfile`. Пример Linux-сборки из корня:
+
+```bash
+docker build -t hryukers-desktop-builder:local -f infra/desktop.Dockerfile .
+docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e CARGO_HOME=/workspace/.data/cargo -e CARGO_BUILD_JOBS=2 -v "$PWD:/workspace" hryukers-desktop-builder:local npm run desktop:build -- --bundles deb
+```
+
+Перед запуском в `apps/web` выполните `npm ci`. Не переносите node_modules с Windows в Linux-сборщик; устанавливайте зависимости внутри соответствующей ОС. Этот контейнер предназначен для сборки, а не для установки приложения конечному пользователю.
 
 ## Native UX
 

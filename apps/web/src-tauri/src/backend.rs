@@ -34,7 +34,9 @@ pub fn validate_url(value: &str) -> Result<Url, String> {
     let url = Url::parse(value.trim()).map_err(|_| "Введите полный адрес сервера")?;
     let loopback = matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"));
     if url.scheme() != "https" && !(url.scheme() == "http" && loopback) {
-        return Err("Для удалённого сервера нужен HTTPS. HTTP разрешён только для localhost".into());
+        return Err(
+            "Для удалённого сервера нужен HTTPS. HTTP разрешён только для localhost".into(),
+        );
     }
     if url.host_str().is_none()
         || !url.username().is_empty()
@@ -82,14 +84,23 @@ impl Backend {
 
     pub async fn request(&self, input: ApiRequest) -> Result<ApiResponse, String> {
         let url = self.api_url(&input.path)?;
-        if !matches!(input.method.as_str(), "GET" | "POST" | "PUT" | "PATCH" | "DELETE") {
+        if !matches!(
+            input.method.as_str(),
+            "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
+        ) {
             return Err("Метод запроса не поддерживается".into());
         }
-        let method = Method::from_bytes(input.method.as_bytes()).map_err(|_| "Некорректный метод")?;
-        let mut request = self.client.request(method, url)
+        let method =
+            Method::from_bytes(input.method.as_bytes()).map_err(|_| "Некорректный метод")?;
+        let mut request = self
+            .client
+            .request(method, url)
             .header("Origin", self.url.origin().ascii_serialization());
         for (key, value) in input.headers {
-            if matches!(key.to_ascii_lowercase().as_str(), "content-type" | "idempotency-key") {
+            if matches!(
+                key.to_ascii_lowercase().as_str(),
+                "content-type" | "idempotency-key"
+            ) {
                 request = request.header(key, value);
             }
         }
@@ -97,36 +108,64 @@ impl Backend {
             if body.len() > MAX_REQUEST * 4 / 3 + 4 {
                 return Err("Файл превышает допустимый размер".into());
             }
-            let bytes = STANDARD.decode(body).map_err(|_| "Не удалось прочитать данные запроса")?;
+            let bytes = STANDARD
+                .decode(body)
+                .map_err(|_| "Не удалось прочитать данные запроса")?;
             if bytes.len() > MAX_REQUEST {
                 return Err("Файл превышает допустимый размер".into());
             }
             request = request.body(bytes);
         }
-        let mut response = request.send().await.map_err(|_| "Сервер недоступен. Проверьте адрес и подключение")?;
+        let mut response = request
+            .send()
+            .await
+            .map_err(|_| "Сервер недоступен. Проверьте адрес и подключение")?;
         if response.status().is_redirection() {
             return Err("Сервер вернул перенаправление. Укажите конечный адрес сервера".into());
         }
         let status = response.status().as_u16();
-        let headers = ["content-type", "content-disposition", "x-request-id"].into_iter()
-            .filter_map(|key| response.headers().get(key).and_then(|v| v.to_str().ok()).map(|v| (key.to_string(), v.to_string())))
+        let headers = ["content-type", "content-disposition", "x-request-id"]
+            .into_iter()
+            .filter_map(|key| {
+                response
+                    .headers()
+                    .get(key)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|v| (key.to_string(), v.to_string()))
+            })
             .collect();
         let mut bytes = Vec::new();
-        while let Some(chunk) = response.chunk().await.map_err(|_| "Соединение прервано при получении данных")? {
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|_| "Соединение прервано при получении данных")?
+        {
             if bytes.len() + chunk.len() > MAX_RESPONSE {
                 return Err("Ответ сервера превышает допустимый размер".into());
             }
             bytes.extend_from_slice(&chunk);
         }
-        Ok(ApiResponse { status, headers, body_base64: STANDARD.encode(bytes) })
+        Ok(ApiResponse {
+            status,
+            headers,
+            body_base64: STANDARD.encode(bytes),
+        })
     }
 
     pub async fn check(&self) -> Result<(), String> {
-        let response = self.request(ApiRequest {
-            path: "/api/v1/health/ready".into(), method: "GET".into(), headers: HashMap::new(), body_base64: None,
-        }).await?;
-        let bytes = STANDARD.decode(response.body_base64).map_err(|_| "Некорректный ответ сервера")?;
-        let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| "По этому адресу не найден API платформы")?;
+        let response = self
+            .request(ApiRequest {
+                path: "/api/v1/health/ready".into(),
+                method: "GET".into(),
+                headers: HashMap::new(),
+                body_base64: None,
+            })
+            .await?;
+        let bytes = STANDARD
+            .decode(response.body_base64)
+            .map_err(|_| "Некорректный ответ сервера")?;
+        let value: serde_json::Value = serde_json::from_slice(&bytes)
+            .map_err(|_| "По этому адресу не найден API платформы")?;
         if response.status != 200 || value.get("status").and_then(|s| s.as_str()) != Some("ok") {
             return Err("Сервер пока не готов. Проверьте базу данных и очередь".into());
         }
@@ -140,10 +179,21 @@ mod tests {
 
     #[test]
     fn remote_server_requires_https_and_clean_origin() {
-        for url in ["http://example.com", "https://user:secret@example.com", "https://example.com/api", "https://example.com?token=x", "file:///tmp/x"] {
+        for url in [
+            "http://example.com",
+            "https://user:secret@example.com",
+            "https://example.com/api",
+            "https://example.com?token=x",
+            "file:///tmp/x",
+        ] {
             assert!(validate_url(url).is_err(), "{url}");
         }
-        for url in ["http://localhost:5180", "http://127.0.0.1:5180/", "http://[::1]:5180", "https://cdp.example.com"] {
+        for url in [
+            "http://localhost:5180",
+            "http://127.0.0.1:5180/",
+            "http://[::1]:5180",
+            "https://cdp.example.com",
+        ] {
             assert!(validate_url(url).is_ok(), "{url}");
         }
     }
@@ -151,15 +201,33 @@ mod tests {
     #[test]
     fn request_cannot_escape_api_or_origin() {
         let backend = Backend::new("http://127.0.0.1:5180").unwrap();
-        for path in ["https://evil.invalid/api/v1/x", "//evil.invalid/api/v1/x", "/api/v1/../../x", "/api/v1/%2e%2e/x", "/api/v1/a\\x", "/api/v1/auth/me#fragment", "/other"] {
+        for path in [
+            "https://evil.invalid/api/v1/x",
+            "//evil.invalid/api/v1/x",
+            "/api/v1/../../x",
+            "/api/v1/%2e%2e/x",
+            "/api/v1/a\\x",
+            "/api/v1/auth/me#fragment",
+            "/other",
+        ] {
             assert!(backend.api_url(path).is_err(), "{path}");
         }
-        assert_eq!(backend.api_url("/api/v1/customers?q=a%40b.invalid").unwrap().host_str(), Some("127.0.0.1"));
+        assert_eq!(
+            backend
+                .api_url("/api/v1/customers?q=a%40b.invalid")
+                .unwrap()
+                .host_str(),
+            Some("127.0.0.1")
+        );
     }
 
     #[tokio::test]
     async fn native_session_keeps_cookie_and_preserves_upload_bytes() {
-        use std::{io::{Read, Write}, net::TcpListener, thread};
+        use std::{
+            io::{Read, Write},
+            net::TcpListener,
+            thread,
+        };
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let origin = format!("http://{}", listener.local_addr().unwrap());
         let expected_origin = origin.clone();
@@ -168,7 +236,9 @@ mod tests {
         let server = thread::spawn(move || {
             for index in 0..2 {
                 let (mut stream, _) = listener.accept().unwrap();
-                stream.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(10)))
+                    .unwrap();
                 let mut bytes = Vec::new();
                 let mut buf = [0_u8; 4096];
                 let (header_end, size) = loop {
@@ -177,7 +247,12 @@ mod tests {
                     bytes.extend_from_slice(&buf[..n]);
                     if let Some(pos) = bytes.windows(4).position(|w| w == b"\r\n\r\n") {
                         let header = String::from_utf8_lossy(&bytes[..pos]).to_lowercase();
-                        let size: usize = header.lines().find_map(|line| line.strip_prefix("content-length: ")).unwrap_or("0").parse().unwrap();
+                        let size: usize = header
+                            .lines()
+                            .find_map(|line| line.strip_prefix("content-length: "))
+                            .unwrap_or("0")
+                            .parse()
+                            .unwrap();
                         break (pos + 4, size);
                     }
                 };
@@ -194,21 +269,40 @@ mod tests {
                     assert!(header.contains("content-type: multipart/form-data; boundary=boundary"));
                     assert_eq!(&bytes[header_end..header_end + size], expected_upload);
                 }
-                let cookie = if index == 0 { "Set-Cookie: hryukers_session=test-session; HttpOnly; Path=/\r\n" } else { "" };
+                let cookie = if index == 0 {
+                    "Set-Cookie: hryukers_session=test-session; HttpOnly; Path=/\r\n"
+                } else {
+                    ""
+                };
                 write!(stream, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/json\r\nConnection: close\r\n{cookie}\r\n{{}}").unwrap();
             }
         });
         let backend = Backend::new(&origin).unwrap();
-        let response = backend.request(ApiRequest {
-            path: "/api/v1/auth/login".into(), method: "POST".into(), headers: HashMap::new(), body_base64: None,
-        }).await.unwrap();
+        let response = backend
+            .request(ApiRequest {
+                path: "/api/v1/auth/login".into(),
+                method: "POST".into(),
+                headers: HashMap::new(),
+                body_base64: None,
+            })
+            .await
+            .unwrap();
         assert!(!response.headers.contains_key("set-cookie"));
         let mut headers = HashMap::new();
-        headers.insert("Content-Type".into(), "multipart/form-data; boundary=boundary".into());
+        headers.insert(
+            "Content-Type".into(),
+            "multipart/form-data; boundary=boundary".into(),
+        );
         headers.insert("X-Untrusted".into(), "should-be-dropped".into());
-        let response = backend.request(ApiRequest {
-            path: "/api/v1/sources/example/imports".into(), method: "POST".into(), headers, body_base64: Some(STANDARD.encode(upload)),
-        }).await.unwrap();
+        let response = backend
+            .request(ApiRequest {
+                path: "/api/v1/sources/example/imports".into(),
+                method: "POST".into(),
+                headers,
+                body_base64: Some(STANDARD.encode(upload)),
+            })
+            .await
+            .unwrap();
         assert_eq!(response.status, 200);
         server.join().unwrap();
     }

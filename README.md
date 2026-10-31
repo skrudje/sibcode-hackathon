@@ -34,6 +34,7 @@ docker compose up --build -d --wait
 
 ## Что реализовано
 
+- Tauri 2: desktop-клиент Linux/Windows, настройки сервера, native HTTP-сессия и диалог сохранения CSV.
 - React/TypeScript/Vite, Tailwind и локальные UI-компоненты в стиле shadcn, Radix Dialog, TanStack Query.
 - FastAPI, Pydantic, PostgreSQL 18, SQLAlchemy, Alembic.
 - Закрытый кабинет, cookie-сессии, Argon2, проверка origin и границ ТЦ.
