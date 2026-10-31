@@ -4384,7 +4384,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Внутренний ID профиля CDP. Источники не обязаны его передавать; сопоставление выполняется по телефону или email внутри ТЦ."
           },
           "display_name": {
             "anyOf": [
@@ -4401,7 +4402,8 @@
             "enum": [
               "verified",
               "source_only"
-            ]
+            ],
+            "description": "verified: есть корректный телефон или email для сопоставления; source_only: доступны только локальный ID источника и непригодные для сопоставления контакты. Не означает проверку личности."
           },
           "created_at": {
             "type": "string",
@@ -4526,7 +4528,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Внутренний ID профиля CDP. Источники не обязаны его передавать; сопоставление выполняется по телефону или email внутри ТЦ."
           },
           "display_name": {
             "anyOf": [
@@ -4543,7 +4546,8 @@
             "enum": [
               "verified",
               "source_only"
-            ]
+            ],
+            "description": "verified: есть корректный телефон или email для сопоставления; source_only: доступны только локальный ID источника и непригодные для сопоставления контакты. Не означает проверку личности."
           },
           "created_at": {
             "type": "string",
@@ -4755,7 +4759,8 @@
           },
           "require_verified_identity": {
             "type": "boolean",
-            "const": true
+            "const": true,
+            "description": "Для участия нужен корректный телефон или email. Общий ключ источников не требуется."
           },
           "require_complete_coverage": {
             "type": "boolean",

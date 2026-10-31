@@ -3,8 +3,7 @@
     {
       "id": "A-001",
       "customer": {
-        "id": "A-G001",
-        "global_key": "G001",
+        "id": "cinema-101",
         "name": "Посетитель 001",
         "email": "g001@example.invalid",
         "phone": "+70000000001",
@@ -18,8 +17,7 @@
     {
       "id": "A-002",
       "customer": {
-        "id": "A-G002",
-        "global_key": "G002",
+        "id": "cinema-102",
         "name": "Посетитель 002",
         "email": "g002@example.invalid",
         "phone": "+70000000002",
@@ -33,8 +31,7 @@
     {
       "id": "A-003",
       "customer": {
-        "id": "A-G003",
-        "global_key": "G003",
+        "id": "cinema-103",
         "name": "Посетитель 003",
         "email": "g003@example.invalid",
         "phone": "+70000000003",
@@ -48,11 +45,10 @@
     {
       "id": "A-004",
       "customer": {
-        "id": "A-G004",
-        "global_key": "G004",
+        "id": "cinema-104",
         "name": "Посетитель 004",
         "email": null,
-        "phone": null,
+        "phone": "+70000000004",
         "push_token": null
       },
       "kind": "visit",
@@ -63,8 +59,7 @@
     {
       "id": "A-005",
       "customer": {
-        "id": "A-G005",
-        "global_key": "G005",
+        "id": "cinema-105",
         "name": "Посетитель 005",
         "email": "g005-a@example.invalid",
         "phone": "+70000000005",
@@ -78,11 +73,10 @@
     {
       "id": "A-006",
       "customer": {
-        "id": "A-G006",
-        "global_key": null,
+        "id": "cinema-106",
         "name": "Посетитель 006",
-        "email": "g006@example.invalid",
-        "phone": "+70000000006",
+        "email": "invalid-email",
+        "phone": null,
         "push_token": null
       },
       "kind": "visit",
@@ -93,10 +87,9 @@
     {
       "id": "A-007",
       "customer": {
-        "id": "A-G007",
-        "global_key": "G007",
+        "id": "cinema-107",
         "name": "Посетитель 007",
-        "email": "g001@example.invalid",
+        "email": "g007@example.invalid",
         "phone": "+70000000007",
         "push_token": null
       },
@@ -108,8 +101,7 @@
     {
       "id": "A-008",
       "customer": {
-        "id": "A-G008",
-        "global_key": "G008",
+        "id": "cinema-108",
         "name": "Посетитель 008",
         "email": "g008@example.invalid",
         "phone": "+70000000008",
@@ -123,8 +115,7 @@
     {
       "id": "A-009",
       "customer": {
-        "id": "A-G009",
-        "global_key": "G009",
+        "id": "cinema-109",
         "name": "Посетитель 009",
         "email": "g009@example.invalid",
         "phone": "+70000000009",
@@ -138,8 +129,7 @@
     {
       "id": "A-001",
       "customer": {
-        "id": "A-G001",
-        "global_key": "G001",
+        "id": "cinema-101",
         "name": "Посетитель 001",
         "email": "g001@example.invalid",
         "phone": "+70000000001",
@@ -153,8 +143,7 @@
     {
       "id": "A-BAD-DATE",
       "customer": {
-        "id": "A-G010",
-        "global_key": "G010",
+        "id": "cinema-110",
         "name": "Посетитель 010",
         "email": "g010@example.invalid",
         "phone": "+70000000010",
@@ -168,11 +157,10 @@
     {
       "id": "A-IDENTITY-CONFLICT",
       "customer": {
-        "id": "A-G001",
-        "global_key": "G999",
+        "id": "cinema-101",
         "name": "Посетитель 001",
-        "email": "g001@example.invalid",
-        "phone": "+70000000001",
+        "email": "g002@example.invalid",
+        "phone": "+70000000002",
         "push_token": "demo-push-g001"
       },
       "kind": "visit",

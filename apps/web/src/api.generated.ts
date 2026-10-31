@@ -696,9 +696,13 @@ export interface components {
         Customer: {
             /** Format: uuid */
             id: string;
+            /** @description Внутренний ID профиля CDP. Источники не обязаны его передавать; сопоставление выполняется по телефону или email внутри ТЦ. */
             global_customer_key: string | null;
             display_name: string | null;
-            /** @enum {string} */
+            /**
+             * @description verified: есть корректный телефон или email для сопоставления; source_only: доступны только локальный ID источника и непригодные для сопоставления контакты. Не означает проверку личности.
+             * @enum {string}
+             */
             identity_status: "verified" | "source_only";
             /** Format: date-time */
             created_at: string;
@@ -728,9 +732,13 @@ export interface components {
         CustomerDetail: {
             /** Format: uuid */
             id: string;
+            /** @description Внутренний ID профиля CDP. Источники не обязаны его передавать; сопоставление выполняется по телефону или email внутри ТЦ. */
             global_customer_key: string | null;
             display_name: string | null;
-            /** @enum {string} */
+            /**
+             * @description verified: есть корректный телефон или email для сопоставления; source_only: доступны только локальный ID источника и непригодные для сопоставления контакты. Не означает проверку личности.
+             * @enum {string}
+             */
             identity_status: "verified" | "source_only";
             /** Format: date-time */
             created_at: string;
@@ -774,7 +782,10 @@ export interface components {
             lookback_days: number;
             include_all: components["schemas"]["EventCondition"][];
             exclude_any: components["schemas"]["EventCondition"][];
-            /** @constant */
+            /**
+             * @description Для участия нужен корректный телефон или email. Общий ключ источников не требуется.
+             * @constant
+             */
             require_verified_identity: true;
             /** @constant */
             require_complete_coverage: true;
