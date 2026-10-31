@@ -1,10 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Link,
-  NavLink,
   Route,
   Routes,
-  useLocation,
+  useNavigate,
   useParams,
 } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,7 +14,6 @@ import {
   BookOpen,
   Check,
   CheckCheck,
-  ChevronDown,
   ChevronLeft,
   CircleAlert,
   Clapperboard,
@@ -23,11 +21,8 @@ import {
   FileSpreadsheet,
   Filter,
   GitBranch,
-  HelpCircle,
-  LayoutDashboard,
   Link2,
   LoaderCircle,
-  LogOut,
   Mail,
   Plus,
   Search,
@@ -61,16 +56,9 @@ import {
 } from "./api";
 import { Button } from "./components/ui/button";
 import { Dialog } from "./components/ui/dialog";
-import { ExportDownload } from "./components/desktop";
+import { DesktopConnection, ExportDownload } from "./components/desktop";
+import { Workspace } from "./components/workspace";
 
-const links = [
-  { to: "/", label: "Обзор", icon: LayoutDashboard },
-  { to: "/sources", label: "Источники данных", icon: Database },
-  { to: "/customers", label: "Клиенты", icon: Users },
-  { to: "/segments", label: "Сегменты", icon: GitBranch },
-  { to: "/recommendations", label: "Рекомендации", icon: Sparkles },
-  { to: "/campaigns", label: "Кампании", icon: Send },
-];
 
 function Message({
   children,
@@ -277,29 +265,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
   });
   return (
     <div className="login-page">
-      <section className="login-story">
-        <Link2 size={39} />
-        <div>
-          <Badge tone="white">ХРЮКЕРСЫ · КЕЙС №2</Badge>
-          <h1>
-            Данные объединяются.
-            <br />
-            Возможности —<br />
-            открываются.
-          </h1>
-          <p>
-            Помогите посетителям найти следующее любимое место в вашем торговом
-            центре.
-          </p>
-        </div>
-        <span>Клиентская платформа · SibКод 2026</span>
-      </section>
       <main className="login-form">
-        <div className="login-mark">
-          <Link2 size={24} /> хрюкерсы<span>CDP</span>
-        </div>
+        <div className="login-mark"><span className="brand-icon"><Link2 size={23} /></span><strong>Хрюкерсы</strong><span>CDP</span></div>
         <h2>Добро пожаловать</h2>
-        <p>Войдите в кабинет управляющей компании</p>
+        <p>Войдите в рабочее пространство торгового центра</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -338,10 +307,11 @@ function Login({ onLogin }: { onLogin: () => void }) {
           </Button>
         </form>
         <div className="login-note">
-          <ShieldCheck size={17} /> Закрытый кабинет. Только синтетические
-          демоданные.
+          <ShieldCheck size={15} /> Демонстрационная среда · Синтетические данные
         </div>
+        <DesktopConnection />
       </main>
+      <div className="login-version">Клиентская платформа · SibКод 2026 · 0.1.0</div>
     </div>
   );
 }
@@ -374,125 +344,30 @@ export default function App() {
 }
 
 function Layout({ email }: { email: string }) {
-  const client = useQueryClient(),
-    location = useLocation();
+  const client = useQueryClient();
+  const navigate = useNavigate();
   const [help, setHelp] = useState(false);
   const logout = useMutation({
     mutationFn: () => api("/auth/logout", { method: "POST" }),
     onSuccess: () => {
       client.clear();
-      window.location.assign("/");
+      client.setQueryData(["me"], null);
+      navigate("/", { replace: true });
     },
   });
-  const active = links.find((l) =>
-    l.to === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(l.to),
-  );
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <Link to="/" className="brand">
-          <span className="brand-icon">
-            <Link2 size={25} />
-          </span>
-          <span>
-            хрюкерсы<small>КЛИЕНТСКАЯ ПЛАТФОРМА</small>
-          </span>
-        </Link>
-        <div className="mall-switch">
-          <span className="mall-icon">О</span>
-          <div>
-            <strong>ТЦ «Орбита»</strong>
-            <span>Управляющая компания</span>
-          </div>
-          <ChevronDown size={15} />
-        </div>
-        <div className="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
-        <nav>
-          {links.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="pilot-note">
-            <span className="pulse-dot" /> Пилотный проект
-            <small>Синтетические данные · Кейс №2</small>
-          </div>
-          <button className="nav-link" onClick={() => setHelp(true)}>
-            <HelpCircle size={19} /> Как работает платформа
-          </button>
-          <div className="account">
-            <span className="avatar avatar-user">МК</span>
-            <div>
-              <strong>Маркетолог УК</strong>
-              <span>{email}</span>
-            </div>
-            <button
-              className="icon-button"
-              aria-label="Выйти"
-              onClick={() => logout.mutate()}
-            >
-              <LogOut size={17} />
-            </button>
-          </div>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            Рабочее пространство <span>/</span>
-            <strong>{active?.label ?? "Профиль клиента"}</strong>
-          </div>
-          <div className="topbar-right">
-            <Badge tone="green">
-              <span className="pulse-dot" /> Рабочий кабинет
-            </Badge>
-            <button
-              className="icon-button"
-              aria-label="Помощь"
-              onClick={() => setHelp(true)}
-            >
-              <HelpCircle size={19} />
-            </button>
-            <div className="topbar-avatar">МК</div>
-          </div>
-        </header>
-        <main className="main">
-          <Routes>
-            <Route path="/" element={<Overview />} />
-            <Route path="/sources" element={<Sources />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/customers/:id" element={<CustomerProfile />} />
-            <Route path="/segments" element={<Segments />} />
-            <Route path="/recommendations" element={<Recommendations />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route
-              path="*"
-              element={
-                <Empty
-                  title="Страница не найдена"
-                  text="Выберите раздел в меню слева."
-                />
-              }
-            />
-          </Routes>
-          <footer className="main-footer">
-            <span>Хрюкерсы · SibКод 2026</span>
-            <span>Единый профиль. Полезный следующий визит.</span>
-          </footer>
-        </main>
-      </div>
+    <Workspace email={email} onHelp={() => setHelp(true)} onLogout={() => logout.mutate()} loggingOut={logout.isPending}>
+      <ErrorMessage error={logout.error} />
+      <Routes>
+        <Route path="/" element={<Overview />} />
+        <Route path="/sources" element={<Sources />} />
+        <Route path="/customers" element={<Customers />} />
+        <Route path="/customers/:id" element={<CustomerProfile />} />
+        <Route path="/segments" element={<Segments />} />
+        <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/campaigns" element={<Campaigns />} />
+        <Route path="*" element={<Empty title="Страница не найдена" text="Выберите раздел в меню слева." />} />
+      </Routes>
       {help && (
         <Dialog
           title="От данных — к следующему визиту"
@@ -527,7 +402,7 @@ function Layout({ email }: { email: string }) {
           </div>
         </Dialog>
       )}
-    </div>
+    </Workspace>
   );
 }
 
@@ -567,72 +442,19 @@ function Overview() {
   return (
     <>
       <Title
-        eyebrow="ВАШ ТОРГОВЫЙ ЦЕНТР — ОДНА ИСТОРИЯ"
         title="Обзор платформы"
-        text="Видеть клиента целиком. Находить точки роста вместе."
+        text="Состояние клиентской базы и загрузок ТЦ «Орбита»"
         actions={
-          <Button asChild variant="outline">
-            <Link to="/sources">
-              <Upload size={16} /> Загрузить данные
-            </Link>
-          </Button>
+          <>
+            <Button variant="outline" disabled={demo.isPending} onClick={() => demo.mutate()}>
+              {demo.isPending ? <LoaderCircle size={15} className="spin" /> : <Database size={15} />}
+              {demo.isPending ? demo.step : data?.customer_count ? "Повторить демозагрузку" : "Запустить демосценарий"}
+            </Button>
+            <Button asChild><Link to="/sources"><Upload size={15} /> Загрузить данные</Link></Button>
+          </>
         }
       />
       <ErrorMessage error={summary.error ?? demo.error} />
-      <div className="welcome-banner">
-        <div>
-          <span className="banner-kicker">
-            <Sparkles size={15} /> БОЛЬШЕ, ЧЕМ ОТДЕЛЬНЫЕ ПОКУПКИ
-          </span>
-          <h2>
-            Следующее любимое место
-            <br />
-            вашего посетителя — рядом.
-          </h2>
-          <p>
-            Соединяйте историю арендаторов и превращайте
-            <br className="desktop" /> знакомые маршруты в новые возможности.
-          </p>
-          <Button
-            variant="dark"
-            disabled={demo.isPending}
-            onClick={() => demo.mutate()}
-          >
-            {demo.isPending ? (
-              <>
-                <LoaderCircle size={16} className="spin" />
-                {demo.step}
-              </>
-            ) : (
-              <>
-                <span>
-                  {data?.customer_count
-                    ? "Повторить демозагрузку"
-                    : "Запустить демосценарий"}
-                </span>
-                <ArrowUpRight size={17} />
-              </>
-            )}
-          </Button>
-        </div>
-        <div className="orbit-art" aria-hidden>
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="orbit orbit-three" />
-          <div className="orbit-center">
-            <Link2 size={48} />
-          </div>
-          <span className="orbit-label orbit-label-a">
-            <Clapperboard size={17} /> Кино
-          </span>
-          <span className="orbit-label orbit-label-b">
-            <Utensils size={17} /> Кафе
-          </span>
-          <span className="orbit-label orbit-label-c">
-            <BookOpen size={17} /> Книги
-          </span>
-        </div>
-      </div>
       <div className="metrics">
         {[
           {
@@ -679,7 +501,7 @@ function Overview() {
       <div className="overview-grid">
         <Panel
           title="Последние загрузки"
-          subtitle="Данные, из которых складывается общая картина"
+          subtitle="Результаты последних заданий импорта"
           action={
             <Link className="text-link" to="/sources">
               Все источники
@@ -908,7 +730,7 @@ function Sources() {
     <>
       <Title
         title="Источники данных"
-        text="Три разных системы. Единый язык событий и клиентов."
+        text="Подключения арендаторов, загрузка файлов и журнал обработки"
         actions={
           <Button
             disabled={demo.isPending || mutation.isPending}
@@ -1156,10 +978,10 @@ function Customers() {
     <>
       <Title
         title="Клиенты"
-        text="Общая история посетителя вместо разрозненных баз арендаторов."
+        text="Профили посетителей и события из всех источников"
         actions={<Badge tone="blue">{data.data?.total ?? "—"} профилей</Badge>}
       />
-      <Panel>
+      <Panel className="customer-browser">
         <div className="table-toolbar">
           <label className="search-input">
             <Search size={18} />

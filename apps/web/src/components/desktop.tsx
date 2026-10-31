@@ -33,8 +33,8 @@ export function DesktopConnection() {
   if (!desktop) return null;
   return (
     <>
-      <button className="desktop-connection" onClick={() => setOpen(true)} title={current}>
-        <Monitor size={16} /> Подключение к серверу
+      <button className="desktop-connection" aria-label="Подключение к серверу" onClick={() => setOpen(true)} title={current}>
+        <Monitor size={13} /><span>Подключение к серверу</span>
       </button>
       {open && (
         <Dialog title="Подключение к платформе" onClose={() => !connect.isPending && setOpen(false)}>
