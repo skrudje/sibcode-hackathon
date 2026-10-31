@@ -153,7 +153,7 @@ export function ConnectionUnavailable({ checking, onRetry }: { checking: boolean
     <main className="connection-unavailable">
       <div className="connection-recovery">
         <span className="connection-recovery-icon"><Unplug size={29} /></span>
-        <div className="eyebrow">Хрюкерсы CDP</div>
+        <div className="eyebrow">NEXA</div>
         <h1>Не удалось подключиться</h1>
         <p>Платформа сейчас недоступна. Проверьте подключение к сети и попробуйте ещё раз.</p>
         <Button onClick={() => { void health.refetch(); onRetry(); }} disabled={checking}><RefreshCw size={16} className={checking ? "spin" : ""} />{checking ? "Подключаемся…" : "Повторить"}</Button>
