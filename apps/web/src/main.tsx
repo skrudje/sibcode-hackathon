@@ -15,8 +15,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={client}>
       <Router>
-        <App />
-        <DesktopConnection />
+        <DesktopConnection><App /></DesktopConnection>
       </Router>
     </QueryClientProvider>
   </React.StrictMode>,

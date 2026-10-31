@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import {
   api,
+  ApiError,
   type Campaign,
   type Customer,
   type ImportJob,
@@ -362,6 +363,14 @@ export default function App() {
     return () => window.removeEventListener("session-expired", expired);
   }, [client, me.refetch]);
   if (me.isPending) return <Loading />;
+  if (!me.data && me.error && !(me.error instanceof ApiError && me.error.status === 401))
+    return <div className="connection-failure">
+      <CircleAlert size={32} />
+      <h1>Не удалось открыть платформу</h1>
+      <p>Проверьте подключение к серверу и повторите попытку.</p>
+      <ErrorMessage error={me.error} />
+      <Button disabled={me.isFetching} onClick={() => void me.refetch()}>Повторить загрузку</Button>
+    </div>;
   if (!me.data)
     return (
       <Login
@@ -965,8 +974,12 @@ function Sources() {
                   <strong>{when(source.last_success_at)}</strong>
                 </span>
                 <span>
-                  История доступна с
-                  <strong>{when(source.coverage_from)}</strong>
+                  Период полноты истории
+                  <strong>{source.coverage_from && source.coverage_to ? `${when(source.coverage_from)} — ${when(source.coverage_to)}` : "Не задан"}</strong>
+                </span>
+                <span>
+                  Типы событий с полной историей
+                  <strong>{source.covered_event_types.map((type) => eventNames[type]).join(", ") || "Не заданы"}</strong>
                 </span>
               </div>
               <Button
@@ -995,7 +1008,7 @@ function Sources() {
                     type="file"
                     aria-label={`Файл ${source.name}`}
                     accept={source.kind === "pos_xlsx" ? ".xlsx" : ".csv"}
-                    disabled={mutation.isPending}
+                    disabled={mutation.isPending || demo.isPending}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) mutation.mutate({ source, file });

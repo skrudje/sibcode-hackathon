@@ -7,7 +7,8 @@ test('desktop UI использует IPC transport, hash-навигацию и 
     target.isTauri = true
     target.__TAURI_INTERNALS__ = {
       invoke: async (command, args) => {
-        if (command === 'desktop_connection') return { serverUrl: 'http://127.0.0.1:5181/' }
+        if (command === 'desktop_connection') return { serverUrl: 'http://127.0.0.1:5181/', generation: 0 }
+        if (command === 'desktop_check') { const response = await fetch('/api/v1/health/ready'); if (!response.ok) throw 'Сервер недоступен'; return }
         if (command === 'desktop_connect') throw 'Сервер недоступен. Проверьте адрес и подключение'
         if (command !== 'desktop_request') throw new Error(`Unexpected command: ${command}`)
         const request = args!.request as { path: string; method: string; headers: Record<string, string>; bodyBase64: string | null }
