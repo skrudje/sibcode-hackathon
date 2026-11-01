@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source not "../src-tauri/vendor";
 
 :root {
   font-family: Inter, "Segoe UI", Arial, sans-serif;

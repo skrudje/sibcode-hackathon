@@ -876,8 +876,9 @@ export interface components {
             tenant_id: string | null;
         };
         LoginRequest: {
-            /** Format: email */
+            /** Email */
             email: string;
+            /** Password */
             password: string;
         };
         LoginResponse: {
@@ -2254,6 +2255,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Превышен лимит запросов, очереди или хранения */
+            429: {
+                headers: {
+                    /** @description Через сколько секунд можно повторить запрос */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Зависимость недоступна */
             503: {
                 headers: {
@@ -2842,6 +2854,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Превышен лимит запросов, очереди или хранения */
+            429: {
+                headers: {
+                    /** @description Через сколько секунд можно повторить запрос */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Зависимость недоступна */
             503: {
                 headers: {
@@ -2912,6 +2935,17 @@ export interface operations {
             /** @description Ошибка входных данных */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Превышен лимит запросов, очереди или хранения */
+            429: {
+                headers: {
+                    /** @description Через сколько секунд можно повторить запрос */
+                    "Retry-After"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -5605,6 +5639,17 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            /** @description Превышен лимит запросов, очереди или хранения */
+            429: {
+                headers: {
+                    /** @description Через сколько секунд можно повторить запрос */
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Зависимость недоступна */
             503: {
                 headers: {
@@ -5772,6 +5817,17 @@ export interface operations {
             /** @description Ошибка входных данных */
             422: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            /** @description Превышен лимит запросов, очереди или хранения */
+            429: {
+                headers: {
+                    /** @description Через сколько секунд можно повторить запрос */
+                    "Retry-After"?: string;
                     [name: string]: unknown;
                 };
                 content: {

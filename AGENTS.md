@@ -21,10 +21,13 @@
 - Выгрузка не отправляет сообщения. Сохраняйте предпросмотр, cooldown, идемпотентность и блокировки конкурентного экспорта.
 - Desktop подключается к серверу. Пароли БД и инфраструктура не встраиваются в установщик. Сессия остаётся в native HTTP-клиенте; не отключайте проверку origin и не разрешайте произвольные URL/файловые пути из webview.
 
+- Для коннекторов сохраняйте серверную привязку секретов к ТЦ/арендатору/origin; одного списка доменов недостаточно.
+- `src-tauri/vendor/glib` содержит совместимый backport безопасности GTK3. Сохраняйте лицензии и проверку целостности; не возвращайте уязвимый registry-пакет и не подменяйте его номер версии.
+
 ## Проверки
 
 - Frontend: `cd apps/web`, `npm ci`, `npm run build`.
-- Backend: Python >=3.13, `python -m pip install -e 'apps/api[test]'`, `python -m pytest -q apps/api/tests`. Тестовая БД обязательно оканчивается `_test`.
+- Backend: Python >=3.13, `python -m pip install -e 'apps/api[test]'`, `python -m pytest -q apps/api/tests`. Тестовая БД обязательно оканчивается `_test`; `TEST_REDIS_URL` использует отдельную DB 15.
 - E2E: только отдельный Compose-проект `hryukers-e2e`, инструкции в README. Не очищайте рабочую демонстрационную базу.
 - Desktop: инструкции в `docs/DESKTOP.md`. Не называйте Windows-сборку проверенной без успешного job на Windows.
 - Изменения общей модели оформляйте миграцией Alembic. При изменении API синхронно обновляйте `docs/api/openapi.json` и `apps/web/src/api.generated.ts` через `npm run generate:api`.

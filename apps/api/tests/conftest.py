@@ -9,6 +9,12 @@ if not TEST_URL.rsplit('/', 1)[-1].endswith('_test'):
     raise RuntimeError('Tests require a separate database ending in _test')
 os.environ['DATABASE_URL'] = TEST_URL
 os.environ['SEED_WORKSPACE_DATA'] = 'false'
+os.environ['SEED_DEMO_ACCOUNTS'] = 'true'
+os.environ['DEPLOYMENT_MODE'] = 'local'
+TEST_REDIS_URL = os.environ.get('TEST_REDIS_URL', 'redis://localhost:56380/15')
+if not TEST_REDIS_URL.endswith('/15'):
+    raise RuntimeError('Tests require a separate Redis database 15')
+os.environ['REDIS_URL'] = TEST_REDIS_URL
 
 from sqlalchemy.engine import make_url
 from alembic import command
@@ -30,6 +36,11 @@ command.upgrade(Config(str(ROOT / 'apps/api/alembic.ini')), 'head')
 
 @pytest.fixture(autouse=True)
 def isolated(tmp_path):
+    from redis import Redis
+    redis = Redis.from_url(TEST_REDIS_URL)
+    keys = list(redis.scan_iter('nexa:limit:*'))
+    if keys:
+        redis.delete(*keys)
     from sqlalchemy import text
     with engine.begin() as db:
         names = ', '.join(f'"{t.name}"' for t in reversed(Base.metadata.sorted_tables))

@@ -21,3 +21,13 @@ uuid = "1"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+glib = "0.18"
+
+[patch.crates-io]
+# GTK3 needs the 0.18 ABI; this includes the upstream VariantStrIter safety fix.
+glib = { path = "vendor/glib" }
+
+[profile.test.package.glib]
+opt-level = 3

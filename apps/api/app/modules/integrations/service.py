@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import time
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit
@@ -11,7 +12,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.config import Clock, settings
-from app.core.db import SessionLocal, json_value
+from app.core.db import SessionLocal, json_value, lock
 from app.core.errors import AppError
 from app.models import ImportJob, Source, Tenant
 from app.modules.sources.contracts import SourceCoveragePatch
@@ -52,6 +53,25 @@ def config(source):
     return dict(source.config or {})
 
 
+def credential_for(source, value):
+    name = value.get('credential_env')
+    if not name:
+        return None
+    if not re.fullmatch(r'CONNECTOR_SECRET_[A-Z0-9_]{1,100}', name):
+        raise AppError('credential_not_allowed', 'Недопустимое имя секрета подключения', 403)
+    binding = settings.connector_secret_bindings.get(name, {})
+    url = httpx.URL(validate_api_url(value.get('api_url', '')))
+    origin = str(url.copy_with(path='/', query=None, fragment=None)).rstrip('/')
+    if (binding.get('mall_id') != str(source.mall_id)
+            or binding.get('tenant_id') != str(source.tenant_id)
+            or binding.get('origin', '').rstrip('/') != origin):
+        raise AppError('credential_not_allowed', 'Секрет не назначен этому ТЦ, арендатору и адресу API', 403)
+    token = os.environ.get(name)
+    if not token:
+        raise AppError('credential_unavailable', 'Секрет подключения недоступен на сервере', 503)
+    return token
+
+
 def connection_public(source, tenant, admin=False):
     value = config(source)
     result = dict(id=source.id, tenant_id=tenant.id, tenant_name=tenant.name, category=tenant.category,
@@ -78,8 +98,8 @@ def save_config(db, source, body):
     value['api_url'] = validate_api_url(body.api_url) if body.api_url.strip() else ''
     if body.enabled and not value['api_url']:
         raise AppError('api_url_required', 'Для автоматической загрузки нужен адрес API')
-    if body.credential_env and not os.environ.get(body.credential_env):
-        raise AppError('credential_unavailable', 'Указанный секрет подключения не настроен на сервере')
+    if body.credential_env:
+        credential_for(source, value)
     old = config(source)
     # A new endpoint/credential starts a fresh incremental cursor.
     same = value['api_url'] == old.get('api_url') and body.credential_env == old.get('credential_env')
@@ -95,11 +115,14 @@ def save_config(db, source, body):
 
 
 def enqueue_sync(db, source):
+    from app.modules.ingestion.storage import check_queue_budget
+    lock(db, 'import-storage-budget')
     existing = active_job(db, source.id)
     if existing:
         return existing
     if source.kind == 'contacts' and not config(source).get('api_url'):
         raise AppError('api_not_configured', 'Администратор ещё не настроил API этого арендатора. Можно загрузить CSV или Excel.')
+    check_queue_budget(db, source)
     job = ImportJob(id=uuid4(), source_id=source.id)
     db.add(job)
     if source.kind == 'contacts':
@@ -111,6 +134,7 @@ def enqueue_sync(db, source):
 
 def schedule_due():
     with SessionLocal.begin() as db:
+        lock(db, 'import-storage-budget')
         now = Clock.now()
         sources = db.scalars(select(Source).join(Tenant).where(Source.kind == 'contacts',
                               Tenant.is_active.is_(True)).with_for_update(of=Source, skip_locked=True)).all()
@@ -121,16 +145,16 @@ def schedule_due():
                 enqueue_sync(db, source)
 
 
-def read_page(value, cursor=None, deadline=None):
+def read_page(value, cursor=None, deadline=None, *, source=None):
     deadline = deadline if deadline is not None else time.monotonic()+40
     if time.monotonic() >= deadline:
         raise AppError('source_timeout', 'API не завершил цикл вовремя. Уменьшите объём одной синхронизации.', 503)
     url = validate_api_url(value.get('api_url', ''))
     headers = {'Accept': 'application/json'}
     if name := value.get('credential_env'):
-        token = os.environ.get(name)
-        if not token:
-            raise AppError('credential_unavailable', 'Секрет подключения недоступен на сервере', 503)
+        if source is None:
+            raise AppError('credential_not_allowed', 'Для секрета требуется назначенный источник', 403)
+        token = credential_for(source, value)
         headers['Authorization'] = f'Bearer {token}'
     try:
         with httpx.Client(timeout=10, follow_redirects=False, trust_env=False) as client:
@@ -181,7 +205,7 @@ def fetch_contacts(source):
     # Stay below the worker's 60-second lease while fetching the entire batch.
     deadline = time.monotonic()+40
     for _ in range(20):
-        page = read_page(value, cursor, deadline)
+        page = read_page(value, cursor, deadline, source=source)
         total_bytes += len(json.dumps(page).encode())
         if total_bytes > MAX_BYTES:
             raise AppError('source_too_large', 'Данные одного цикла API превышают 10 MiB')

@@ -21,9 +21,11 @@ from app.core.config import ROOT, Clock, settings
 from app.core.contacts import normalize_contact
 from app.core.db import SessionLocal, dump, json_value, lock
 from app.core.errors import AppError
+from app.core.security import dummy_password_hash, login_limits, login_succeeded, request_limit
 from app.models import AuthSession, Campaign, Customer, CustomerContact, Event, Export, ExternalIdentity, ImportJob, ImportRowResult, RecommendationRule, Segment, Source, Tenant, User
 from app.modules.exports.service import create_export, export_public, preview
 from app.modules.ingestion.adapters import MAX_BYTES
+from app.modules.ingestion.storage import create_file_import
 from app.modules.segments.service import destination_compatible, evaluate, evaluation_summary, recommendations, scoped, validate_definition
 from app.modules.sources.contracts import SourceCoveragePatch
 from app.modules.sources.service import update_coverage
@@ -59,7 +61,7 @@ async def request_policy(request: Request, call_next):
 
 
 def error_response(request, exc):
-    return JSONResponse(status_code=exc.status, content={'error': {'code': exc.code, 'message': exc.message, 'details': exc.details, 'request_id': getattr(request.state, 'request_id', str(uuid4()))}})
+    return JSONResponse(status_code=exc.status, headers=exc.headers, content={'error': {'code': exc.code, 'message': exc.message, 'details': exc.details, 'request_id': getattr(request.state, 'request_id', str(uuid4()))}})
 
 
 @app.exception_handler(AppError)
@@ -165,10 +167,13 @@ def ready(db: DB):
 
 
 @app.post('/api/v1/auth/login')
-def login(body: LoginRequest, response: Response, db: DB):
+def login(body: LoginRequest, request: Request, response: Response, db: DB):
+    limit_key = login_limits(body.email, request.client.host if request.client else 'unknown')
     user = db.scalar(select(User).where(User.email == body.email.strip().lower(), User.is_active.is_(True)))
-    if not user or not PasswordHash.recommended().verify(body.password, user.password_hash):
+    valid = PasswordHash.recommended().verify(body.password, user.password_hash if user else dummy_password_hash())
+    if not user or not valid:
         raise AppError('invalid_credentials', 'Неверный email или пароль', 401)
+    login_succeeded(limit_key)
     token = secrets.token_urlsafe(32)
     db.add(AuthSession(user_id=user.id, token_hash=hashlib.sha256(token.encode()).hexdigest(), expires_at=Clock.now() + timedelta(hours=12)))
     db.commit()
@@ -217,6 +222,7 @@ def source_coverage(source_id: UUID, body: SourceCoveragePatch, user: AdminUser,
 
 @app.post('/api/v1/sources/{source_id}/imports', status_code=202)
 async def upload(source_id: UUID, user: StaffUser, db: DB, file: UploadFile = File(...)):
+    request_limit('file-import', user.id, 30, 60)
     source = scoped(db, Source, source_id, user.mall_id)
     extension = '.' + (file.filename or '').lower().rsplit('.', 1)[-1]
     allowed = {'.csv', '.xlsx'} if source.kind == 'contacts' else {'.csv'} if source.kind == 'crm_csv' else {'.xlsx'} if source.kind == 'pos_xlsx' else set()
@@ -225,23 +231,13 @@ async def upload(source_id: UUID, user: StaffUser, db: DB, file: UploadFile = Fi
     data = await file.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
         raise AppError('file_too_large', 'Максимальный размер файла — 10 MiB', 413)
-    identifier = uuid4()
-    directory = settings.path('upload_dir')
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f'{identifier}{extension}'
-    path.write_bytes(data)
-    try:
-        job = ImportJob(id=identifier, source_id=source_id, file_path=str(path))
-        db.add(job)
-        db.commit()
-    except Exception:
-        path.unlink(missing_ok=True)
-        raise
+    job = await run_in_threadpool(create_file_import, db, source, data, extension)
     return dump(job, JOB_FIELDS)
 
 
 @app.post('/api/v1/sources/{source_id}/sync', status_code=202)
 def sync_source(source_id: UUID, user: StaffUser, db: DB):
+    lock(db, 'import-storage-budget')
     source = db.scalar(select(Source).where(Source.id == source_id, Source.mall_id == user.mall_id).with_for_update())
     if not source:
         raise AppError('not_found', 'Источник не найден', 404)
@@ -272,7 +268,7 @@ def integration_update(source_id: UUID, body: IntegrationWrite, user: AdminUser,
 @app.post('/api/v1/integrations/{source_id}/test', response_model=ConnectionTest)
 def integration_test(source_id: UUID, user: AdminUser, db: DB):
     source = scoped(db, Source, source_id, user.mall_id)
-    page = integrations.read_page(integrations.config(source), integrations.config(source).get('cursor'))
+    page = integrations.read_page(integrations.config(source), integrations.config(source).get('cursor'), source=source)
     # Test checks the format too, but never writes events or advances the cursor.
     from app.modules.integrations.contracts import ContactRecord
     from pydantic import ValidationError
@@ -580,6 +576,7 @@ def brand_context(user: BrandUser, db: DB):
 
 
 async def mapped_brand_file(user, db, file, mapping):
+    await run_in_threadpool(request_limit, 'brand-file', user.id, 30, 60)
     source, info = brand_service.context(db, user)
     content = await file.read(MAX_BYTES + 1)
     if len(content) > MAX_BYTES:
@@ -604,18 +601,7 @@ async def brand_upload(user: BrandUser, db: DB, file: UploadFile = File(...), ma
     source, report, records = await mapped_brand_file(user, db, file, mapping)
     if not report['valid_rows']:
         raise AppError('no_valid_rows', 'Нет корректных записей. Проверьте сопоставление колонок и значения в таблице.')
-    identifier = uuid4()
-    directory = settings.path('upload_dir')
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f'{identifier}.csv'
-    path.write_bytes(brand_service.canonical_csv(records))
-    try:
-        job = ImportJob(id=identifier, source_id=source.id, file_path=str(path))
-        db.add(job)
-        db.commit()
-    except Exception:
-        path.unlink(missing_ok=True)
-        raise
+    job = await run_in_threadpool(create_file_import, db, source, brand_service.canonical_csv(records), '.csv')
     return dump(job, JOB_FIELDS)
 
 

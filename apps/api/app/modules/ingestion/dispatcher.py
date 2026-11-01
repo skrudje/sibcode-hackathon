@@ -40,9 +40,14 @@ def dispatch_once():
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    last_cleanup = 0
     while True:
         try:
             dispatch_once()
+            if time.monotonic() - last_cleanup >= 60:
+                from .storage import cleanup_import_files
+                cleanup_import_files()
+                last_cleanup = time.monotonic()
         except Exception:
             log.warning('Dispatcher reconnecting to dependencies')
         time.sleep(2)

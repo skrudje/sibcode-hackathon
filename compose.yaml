@@ -10,6 +10,12 @@ x-backend: &backend
     MOCK_SOURCE_URL: http://mock-source:8011/events
     ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5180,http://127.0.0.1:5180}
     SEED_WORKSPACE_DATA: '${SEED_WORKSPACE_DATA:-false}'
+    SEED_DEMO_ACCOUNTS: '${SEED_DEMO_ACCOUNTS:-false}'
+    DEPLOYMENT_MODE: '${DEPLOYMENT_MODE:-local}'
+    DEMO_EMAIL: '${DEMO_EMAIL:-marketer@example.com}'
+    DEMO_PASSWORD: '${DEMO_PASSWORD:-HryukersDemo2026!}'
+    ADMIN_EMAIL: '${ADMIN_EMAIL:-admin@example.com}'
+    ADMIN_PASSWORD: '${ADMIN_PASSWORD:-HryukersAdmin2026!}'
   volumes: [uploads:/app/.data/uploads, demo:/app/.data/demo]
   init: true
 services:
