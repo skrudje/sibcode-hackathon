@@ -60,10 +60,17 @@ def seed():
             db.flush()
         reference = mall.demo_reference_time
         manifest = generate_files(reference)
-        if not db.scalar(select(User).where(User.email == settings.demo_email.lower())):
+        if settings.seed_demo_accounts and not db.scalar(select(User).where(User.email == settings.demo_email.lower())):
             db.add(User(mall_id=mall.id, email=settings.demo_email.lower(), password_hash=PasswordHash.recommended().hash(settings.demo_password)))
-        if not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
+        bootstrap_admin = settings.seed_demo_accounts or (
+            len(settings.admin_password) >= 12 and settings.admin_password not in {'HryukersAdmin2026!', 'HryukersDemo2026!'})
+        if bootstrap_admin and not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
             db.add(User(mall_id=mall.id, email=settings.admin_email.lower(), role='admin', password_hash=PasswordHash.recommended().hash(settings.admin_password)))
+        if settings.deployment_mode == 'production':
+            for user in db.scalars(select(User).where(User.is_active.is_(True))):
+                if any(PasswordHash.recommended().verify(value, user.password_hash)
+                       for value in ['HryukersDemo2026!', 'HryukersAdmin2026!']):
+                    raise RuntimeError('Перед production отключите стартовые аккаунты или смените их сохранённые пароли')
         from app.workspace_seed import CATALOG
         for source_info, (name, category) in zip(manifest['sources'], CATALOG):
             tid, sid = UUID(source_info['tenant_id']), UUID(source_info['id'])

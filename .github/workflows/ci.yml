@@ -10,13 +10,20 @@ jobs:
     name: Repository hygiene and secrets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - run: python infra/check_repository.py
+      - name: Audit Python dependencies
+        run: |
+          python -m venv /tmp/nexa-audit
+          /tmp/nexa-audit/bin/pip install pip-audit==2.10.1
+          /tmp/nexa-audit/bin/pip-audit --no-deps --disable-pip -r apps/api/requirements.lock
+      - name: Audit Rust dependencies and verify GLib backport
+        run: python infra/audit_rust.py
       - name: Scan Git history for secrets
         run: |
           docker run --rm --network none -v "$PWD:/repo:ro" \
@@ -29,19 +36,26 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
+      - run: npm audit --audit-level=moderate
       - run: npm run generate:api
       - run: git diff --exit-code -- src/api.generated.ts
       - run: npm run build
   backend:
     runs-on: ubuntu-latest
     services:
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ['56380:6379']
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 3s --health-timeout 3s --health-retries 20
       postgres:
         image: postgres:18-alpine
         env:
@@ -53,8 +67,8 @@ jobs:
           --health-cmd "pg_isready -U hryukers -d hryukers_test"
           --health-interval 3s --health-timeout 3s --health-retries 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.13'
       - run: python -m pip install -r apps/api/requirements.lock
@@ -62,4 +76,5 @@ jobs:
         env:
           PYTHONPATH: apps/api
           TEST_DATABASE_URL: postgresql+psycopg://hryukers:hryukers-local-db@localhost:55432/hryukers_test
+          TEST_REDIS_URL: redis://localhost:56380/15
         run: python -m pytest -q apps/api/tests

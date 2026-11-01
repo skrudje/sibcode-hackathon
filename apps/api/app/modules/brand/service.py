@@ -8,21 +8,17 @@ import csv
 import io
 from datetime import datetime
 from pathlib import Path
-from zipfile import BadZipFile, ZipFile
 from zoneinfo import ZoneInfo
 
-from openpyxl import load_workbook
 from pydantic import ValidationError
 from sqlalchemy import select
 
 from app.core.errors import AppError
+from app.core.spreadsheets import MAX_COLUMNS, spreadsheet
 from app.models import Mall, Source, Tenant
 from app.modules.ingestion.adapters import MAX_ROWS
 from app.modules.ingestion.service import row_error
 from app.modules.integrations.contracts import ContactRecord
-
-MAX_COLUMNS = 200
-
 
 def context(db, user):
     tenant = db.scalar(select(Tenant).where(Tenant.id == user.tenant_id,
@@ -70,18 +66,10 @@ def read_table(filename, content):
             return collect(iterator), sheet_name, encoding
         if extension != '.xlsx':
             raise AppError('unsupported_file', 'Выберите CSV или Excel XLSX', 415)
-        with ZipFile(io.BytesIO(content)) as archive:
-            if sum(info.file_size for info in archive.infolist()) > 100 * 1024 * 1024:
-                raise AppError('file_too_large', 'Распакованная книга превышает 100 MiB', 413)
-        book = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-        try:
+        with spreadsheet(content) as book:
             sheet = book.active
-            if not sheet or (sheet.max_column or 0) > MAX_COLUMNS:
-                raise AppError('invalid_file_schema', 'В таблице допускается до 200 колонок')
             sheet_name = sheet.title
             return collect(sheet.iter_rows(values_only=True)), sheet_name, encoding
-        finally:
-            book.close()
     except AppError:
         raise
     except Exception as exc:

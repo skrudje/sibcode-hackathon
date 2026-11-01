@@ -11,7 +11,7 @@ dependencies = [
   "pydantic>=2.9,<3", "pydantic-settings>=2.6,<3",
   "sqlalchemy>=2.0.36,<3", "psycopg[binary]>=3.2,<4", "alembic>=1.14,<2",
   "pwdlib[argon2]>=0.2,<1", "python-multipart>=0.0.20,<1",
-  "polars>=1.20,<2", "openpyxl>=3.1,<4", "httpx>=0.28,<1",
+  "polars>=1.20,<2", "openpyxl>=3.1,<4", "defusedxml>=0.7.1,<1", "httpx>=0.28,<1",
   "rq>=2.2,<3", "redis>=5,<7"
 ]
 

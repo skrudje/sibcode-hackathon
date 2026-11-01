@@ -290,6 +290,24 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Превышен лимит запросов, очереди или хранения",
+            "headers": {
+              "Retry-After": {
+                "description": "Через сколько секунд можно повторить запрос",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "description": "Установить HttpOnly hryukers_session. В JSON токен не возвращается.",
@@ -1008,6 +1026,24 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Превышен лимит запросов, очереди или хранения",
+            "headers": {
+              "Retry-After": {
+                "description": "Через сколько секунд можно повторить запрос",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "description": "Для admin/marketer. contacts принимает CSV и XLSX с phone/email/time; исторические crm_csv/pos_xlsx принимают свой формат. Максимум 10 MiB.",
@@ -1114,6 +1150,24 @@
           },
           "503": {
             "description": "Зависимость недоступна",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов, очереди или хранения",
+            "headers": {
+              "Retry-After": {
+                "description": "Через сколько секунд можно повторить запрос",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -4590,6 +4644,24 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Превышен лимит запросов, очереди или хранения",
+            "headers": {
+              "Retry-After": {
+                "description": "Через сколько секунд можно повторить запрос",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -4695,6 +4767,24 @@
           },
           "415": {
             "description": "Поддерживаются CSV и XLSX",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Превышен лимит запросов, очереди или хранения",
+            "headers": {
+              "Retry-After": {
+                "description": "Через сколько секунд можно повторить запрос",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -5078,11 +5168,15 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "minLength": 3,
+            "maxLength": 320,
+            "title": "Email"
           },
           "password": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 256,
+            "title": "Password"
           }
         },
         "required": [

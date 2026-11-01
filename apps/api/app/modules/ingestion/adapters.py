@@ -4,12 +4,10 @@ from collections import Counter
 from pathlib import Path
 
 import polars as pl
-from openpyxl import load_workbook
 
 from app.core.errors import AppError
+from app.core.spreadsheets import MAX_BYTES, MAX_COLUMNS, MAX_ROWS, spreadsheet
 
-MAX_BYTES = 10 * 1024 * 1024
-MAX_ROWS = 10000
 REQUIRED_COLUMNS = {
     'contacts': ('phone', 'email', 'time'),
     'crm_csv': ('customer_id', 'event_id', 'event_type', 'event_time'),
@@ -18,6 +16,8 @@ REQUIRED_COLUMNS = {
 
 
 def validate_headers(kind, headers):
+    if len(headers) > MAX_COLUMNS:
+        raise AppError('invalid_file_schema', 'В таблице допускается до 200 колонок')
     columns = [str(value).strip() if value is not None else '' for value in headers]
     missing = [name for name in REQUIRED_COLUMNS[kind] if name not in columns]
     repeated = [name for name, count in Counter(columns).items() if name and count > 1]
@@ -44,6 +44,8 @@ def validate_headers(kind, headers):
 
 def read_rows(kind, path):
     try:
+        if Path(path).stat().st_size > MAX_BYTES:
+            raise AppError('file_too_large', 'Максимальный размер файла — 10 MiB', 413)
         if kind == 'contacts' and Path(path).suffix == '.json':
             value = json.loads(Path(path).read_text())
             rows = value['records']
@@ -61,11 +63,10 @@ def read_rows(kind, path):
             if headers is None:
                 raise AppError('empty_import', 'CSV пустой: добавьте заголовки и строки событий')
             columns = validate_headers(kind, headers)
-            frame = pl.read_csv(path, infer_schema=False, new_columns=columns)
+            frame = pl.read_csv(path, infer_schema=False, new_columns=columns, n_rows=MAX_ROWS + 1)
             rows = frame.to_dicts()
         else:
-            book = load_workbook(path, read_only=True, data_only=True)
-            try:
+            with spreadsheet(path) as book:
                 iterator = book.active.iter_rows(values_only=True)
                 headers = next(iterator, None)
                 if headers is None:
@@ -76,8 +77,6 @@ def read_rows(kind, path):
                     if len(rows) >= MAX_ROWS:
                         raise AppError('too_many_rows', 'В одном задании допускается до 10 000 строк')
                     rows.append(dict(zip(headers, row)))
-            finally:
-                book.close()
         if not rows and not (kind == 'contacts' and Path(path).suffix == '.json'):
             raise AppError('empty_import', 'Источник не содержит записей')
         if len(rows) > MAX_ROWS:

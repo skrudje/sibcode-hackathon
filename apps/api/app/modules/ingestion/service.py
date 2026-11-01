@@ -16,6 +16,7 @@ from app.models import ImportJob, ImportRowResult, Source
 from app.modules.customers.service import ingest_event
 from .adapters import MAX_BYTES, normalize, read_rows
 from app.modules.integrations.service import fetch_contacts
+from .storage import write_payload
 
 
 def guarded_job(db, job_id, token):
@@ -90,12 +91,17 @@ def process_job(job_id):
     try:
         if not file_path:
             content = fetch_api(source_id)
-            directory = settings.path('upload_dir')
-            directory.mkdir(parents=True, exist_ok=True)
-            file_path = str(directory / f'{job_id}-{token}.json')
-            Path(file_path).write_bytes(content)
-            with SessionLocal.begin() as db:
-                guarded_job(db, job_id, token).file_path = file_path
+            path = None
+            try:
+                with SessionLocal.begin() as db:
+                    job = guarded_job(db, job_id, token)
+                    path = write_payload(db, db.get(Source, source_id), content, '.json', f'{job_id}-{token}')
+                    file_path = str(path)
+                    job.file_path = file_path
+            except Exception:
+                if path:
+                    path.unlink(missing_ok=True)
+                raise
         rows = read_rows(source_kind, file_path)
         with SessionLocal.begin() as db:
             guarded_job(db, job_id, token).total_rows = len(rows)
